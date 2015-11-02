@@ -1,0 +1,16 @@
+* Overview
+  This is my attempt at "the matasano crypto challenges" at
+  cryptopals.com
+
+* Set 1
+** Convert hex to base64
+   2015-11-01
+   Base64 uses 6 bits, vs normal hex (Base16) which uses 4. Need to
+   convert bytes (8 bits, Base256) to 6 bit words. Best conversion is
+   24 bits which is 3x8 and 4x6.
+
+   2015-11-02
+   Break byte array into hexlets.
+   Next: need to refactor convert-hexlet!
+   Saw an interesting way to manage the Base64code. Make an array of
+   all characters
