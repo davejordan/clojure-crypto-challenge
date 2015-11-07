@@ -4,13 +4,72 @@
 
 * Set 1
 ** Convert hex to base64
-   2015-11-01
-   Base64 uses 6 bits, vs normal hex (Base16) which uses 4. Need to
-   convert bytes (8 bits, Base256) to 6 bit words. Best conversion is
-   24 bits which is 3x8 and 4x6.
+*** 2015-11-01
+    Base64 uses 6 bits, vs normal hex (Base16) which uses 4. Need to
+    convert bytes (8 bits, Base256) to 6 bit words. Best conversion is
+    24 bits which is 3x8 and 4x6.
 
-   2015-11-02
-   Break byte array into hexlets.
-   Next: need to refactor convert-hexlet!
-   Saw an interesting way to manage the Base64code. Make an array of
-   all characters
+*** 2015-11-02
+    Break byte array into hexlets.
+    Next: need to refactor convert-hexlet!
+    Saw an interesting way to manage the Base64code. Make an array of
+    all characters
+
+*** 2015-11-03
+    Use partition function to split string into 3 byte groups. Then pad
+    the tuples(?) with "0"s. I tried the following code, but removed
+    it in preference for another version:
+    #+BEGIN_SRC clojure
+   (defn hex-3split
+  [[b1 b2 b3]]
+  (let [x (bit-or
+           (bit-shift-left (int b1) 16)
+           (bit-shift-left (int b2) 8)
+           (bit-shift-left (int b3) 0))]
+    [(unsigned-bit-shift-right x 18)
+     (bit-and (unsigned-bit-shift-right x 12) 0x3f)
+     (bit-and (unsigned-bit-shift-right x 6) 0x3f)
+     (bit-and x 0x3f)]))
+    #+END_SRC
+
+*** 2015-11-04
+    Think I've got base64-encode working. I'm now starting on base16
+    decode.
+    I've used a Java string conversion routine for hex conversion. I
+    got set 1 test to pass!
+
+
+** Fixed XOR
+***   2015-11-04
+      Started and finished. Just needed to add a formatting encode-base16 as
+      well.
+
+** Single-byte XOR cipher
+***   2015-11-04
+    Interesting! Need to break a cipher. Suggested to use character
+    frequency, so need to look that up...
+    Letter frequency table came from:
+    http://www.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
+    My idea to score the result text is:
+1. calculate score for each letter in text
+2. calcualte relative score for each letter
+3. calculate absolute difference in relative score for each letter (between
+   known frequency and text)
+4. sum difference
+5. smallest difference wins
+
+*** 2015-11-05
+    Looking for a way to convert between string and keyword in
+    clojure. Found "keyword", but not sure it's what I want.
+    Another way to solve this might be to iterate over list and filter on
+    each item in the iteration. This means at most 26ish repetitions (not
+    sure about digits).
+    Created function to count occurences of characters in a string and
+    return character and count in map.
+
+*** 2015-11-06
+    Got word-score working. It can be a generic function that compares
+    two maps, comparing the second value of each map.
+    I hacked a bit of a pay around to try and get the algorithm. CAN'T
+    LEAVE IT LIKE THIS!
+*** 2015-11-06
