@@ -1,12 +1,13 @@
 (ns clojure-crypto-challenge.core-test
   (:require [clojure-crypto-challenge.core :refer :all]
             [clojure.string :as string]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all]
+            [clojure.math.numeric-tower :as math]))
 
 
-(deftest test-hex-to-64
-  (testing "convert single byte"
-    (are [x y] (= x (convert-hexlet y))
+(deftest test-encode-base64
+  (testing "check small number encodings in base64"
+    (are [x y] (= x (encode-byte-base64 y))
       \A 0
       \Z 25
       \a 26
@@ -14,9 +15,25 @@
       \0 52
       \9 61
       \+ 62
-      \/ 63)))
+      \/ 63))
+  (testing "can't convert larger than 63"
+    (is (thrown? IndexOutOfBoundsException
+                 (encode-byte-base64 64))))
+  (testing "can't convert -ve"
+    (is (thrown? IndexOutOfBoundsException
+                 (encode-byte-base64 -1)))))
 
-(deftest test-convert-4byte-array
+;; (deftest test-hexlet-3byte-split
+;;   (testing "testing 4 byte conversion"
+;;     (are [x y] (= 0 (compare (base64-encode x) y))
+;;       [0 0 0] [\A \A \A \A]
+;;       [0 0 1] [\A \A \A \B]
+;;       [0 0 63] [\A \A \A \/]
+;;       [0xff 0xff 0xff] [\/ \/ \/ \/]
+;;       [0xff 0xff 0xff 0xff] [\/ \/ \/ \/ \/ \w]
+;;       )))
+
+(deftest test-hexlet-3byte-split
   (testing "testing 4 byte conversion"
     (are [x y] (= 0 (compare (base64-encode x) y))
       [0 0 0] [\A \A \A \A]
@@ -39,6 +56,7 @@
 (def hex-source-test-code
   "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d")
 
+
 (def base64-dest-test-code
   "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t")
 
@@ -46,6 +64,10 @@
   (testing "compare the challenge strings"
     (is (= base64-dest-test-code
            (apply str (base64-encode (decode-base16 hex-source-test-code)))))))
+
+(deftest test-challenge-1a
+  (is (= base64-dest-test-code
+         (apply str (sequence reencode-base16-to-64-xf hex-source-test-code)))))
 
 ;; Set 1 Challenge 2
 
@@ -105,11 +127,37 @@
     (is (thrown? NullPointerException (is-word-score {:A 1} {:A 1 :B 1})))))
 
 
+(deftest test-apply-single-byte-XOR
+  (testing "code length is same as source lenth"
+    (are [code-len in] (= code-len (count (apply-single-Byte-XOR in 0)))
+      0 []
+      1 [0]
+      2 [0 0]))
+  (testing "code-byte 0 does not change output"
+    (are [in] (= in (apply-single-Byte-XOR in 0))
+      [0]
+      [255]
+      [0 0]
+      [255 255])))
+
+(deftest test-single-byte-XOR-crack-hexstring
+  (testing "0 key does not change string"
+    (are [in out] (= out (single-byte-XOR-crack-hexstring in 0))
+      "" []
+      ;; "61" [\a]
+      )))
+
+(char 0x61)
+
+(str (format "%h" "a\\b"))
+
+(defn convert-fn
+  [x] (map char x))
 
 
+(def d-list (rat single-byte-xor-cipher-code letter-frequencies convert-fn))
 
-
-(def d-list (rat single-byte-xor-cipher-code letter-frequencies #(map char %)))
+d-list
 
 (def th (reduce merge {} d-list))
 

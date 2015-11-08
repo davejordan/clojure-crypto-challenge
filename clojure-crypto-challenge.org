@@ -72,4 +72,18 @@
     two maps, comparing the second value of each map.
     I hacked a bit of a pay around to try and get the algorithm. CAN'T
     LEAVE IT LIKE THIS!
-*** 2015-11-06
+*** 2015-11-07
+    I've seen the code decrypted, but my frequency algorithm is not
+    quite working correctly. It may be that I'm not creating a
+    distribution of the code letters, and am just comparing absoute
+    counts. Also, not sure how to account for punctuation in frequency
+    distribution.
+    Cleaning up some of the earlier code. Especially the base64
+    decode.
+*** 2015-11-08
+    Detour - play around with concept of tranducers. Started watching
+    R.Hickey talk on this. Recommends "Lectures on Constructive
+    Functional Programming" by R.S
+    Bird. http://www.cs.ox.ac.uk/files/3390/PRG69.pdf and A tutorial
+    on the universality and expressiveness of fold by GRAHAM HUTTON --
+    http://www.cs.nott.ac.uk/~gmh/fold.pdf

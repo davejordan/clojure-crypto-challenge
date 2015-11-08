@@ -1,15 +1,19 @@
 (ns clojure-crypto-challenge.core
-  (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]
+            [clojure.math.numeric-tower :as math]))
 
-(def base64-code
-  (let
-      [character-range '([\A \Z] [\a \z] [\0 \9])
-       m (fn [[s e]] (vec (map char (range (byte s) (+ (byte e) 1)))))]
-    (conj (reduce #(apply conj %1 %2)  (map m character-range)) \+ \/) ))
-
-(defn convert-hexlet
+(defn encode-byte-base64
   [b]
-  (nth base64-code b))
+  (let [crs [[\A \Z] [\a \z] [\0 \9]]
+        rfn (fn [[a b]] (range (byte a) (inc (byte b))))
+        rconj (fn [x y m] (conj (vec  m) x y))]
+    (nth (->>
+          crs
+          (map rfn)
+          (rconj \+ \/)
+          flatten
+          (map char)) b)))
+
 
 (defn hexlet-3byte-split
   "Returns a hexlet representation of a 3 Byte array"
@@ -25,35 +29,62 @@
   "Returns a hexlet representation of a byte array.
   Expects an array of bytes. Length <= 3."
   [t]
-  (let [[b1 b2 b3] t
-        s (count t)]
-    (cond
-      (= s 1) (take 2 (hexlet-3byte-split (conj (vec t) 0 0)))
-      (= s 2) (take 3 (hexlet-3byte-split (conj (vec t) 0)))
-      (= s 3) (hexlet-3byte-split t))))
+  (let [s (count t)
+        padding (- 3 s)
+        tk (+ 1 s)
+        pad (into (vec t) (repeat padding 0))]
+    (take tk (hexlet-3byte-split pad))))
 
-(defn base64-encode
-  "Encode a sequence of bytes in base64 (radix)"
-  [xa]
-  (->>
-   (partition-all 3 xa)
-   ( mapcat hexlet-padded-3byte-split)
-   ( map convert-hexlet)
-   vec))
+;; (defn base64-encode
+;;   "Encode a sequence of bytes in base64 (radix)"
+;;   [xa]
+;;   (->>
+;;    (partition-all 3 xa)
+;;    ( mapcat hexlet-padded-3byte-split)
+;;    ( map encode-byte-base64)
+;;    vec))
 
 
 (defn decode-character-base16
   [x]
-  (Integer/parseInt x 16))
+  (Integer/parseInt (str x) 16))
+
+(def decode-base16-xf
+  (comp
+   (partition-all 2)
+   (map #(apply str %))
+   (map decode-character-base16)))
+
+(def encode-base64-xf
+  (comp
+   (partition-all 3)
+   (mapcat hexlet-padded-3byte-split)
+   (map encode-byte-base64)))
+
+(defn base64-encode
+  [xa]
+  (vec (sequence encode-base64-xf xa)))
+
+(def reencode-base16-to-64-xf
+  (comp
+   decode-base16-xf
+   encode-base64-xf))
+
+
+;; (defn decode-base16
+;;   "Decode a base16 string to numbers"
+;;   [xs]
+;;   (->>
+;;    xs
+;;    (partition-all 2)
+;;    (map (fn [y] (apply str y)))
+;;    (map decode-character-base16)))
 
 (defn decode-base16
-  "Decode a base16 string to numbers"
   [xs]
-  (->>
-   xs
-   (partition-all 2)
-   (map (fn [y] (apply str y)))
-   (map decode-character-base16)))
+  (sequence decode-base16-xf xs))
+
+
 
 (defn encode-base16
   "Encode an array of bytes to a string of Hex"
@@ -116,7 +147,6 @@
               (/ (second %2) c)) {} s)))
 
 
-(defn abs [n] (max n (- n)))
 
 (defn is-word-score
   "difference the scores for each key in w against reference in m.
@@ -127,8 +157,9 @@
     (- 1 (/
           (reduce
            +
-           (map #(abs (- (second %) (get m (first %)))) w))
+           (map #(math/abs (- (second %) (get m (first %)))) w))
           total))))
+
 
 (defn convert-char-to-key
   [c]
@@ -150,22 +181,46 @@
         mks (keys (apply dissoc c ks))]
     (apply dissoc c mks)))
 
-(defn fixed-value-XOR
-  []
-  1 )
+(defn convert-byte-to-char
+  [x] (map char x))
+
+
+
+(defn apply-single-Byte-XOR
+  "Crack code-string by XOR
+  crack using crack-byte. Returns an array of numbers (bytes)"
+  [code-string crack-byte]
+  (let [
+        decoded-length (count code-string)
+        test-array (repeat decoded-length crack-byte)
+        ]
+    (fixed-XOR code-string test-array)))
+
+(defn single-byte-XOR-crack-hexstring
+  [code crack-byte]
+  [])
+
+
 
 (defn rat
   "Create a list of words-scores aginst full range of possible byte values
   "
   [code-string letter-distribution encoding-fn]
-  (let [decoded-code-string (decode-base16 code-string)
-        decoded-code-length (count decoded-code-string)
+  (let [
         test-byte-range (range 0xff)]
     (for [x test-byte-range
           :let [
-                c (repeat decoded-code-length x)
-                xd (fixed-XOR decoded-code-string c)
-                xds (encoding-fn xd)
-                s-occurence-map (cat xd)
-                s-filtered-occurence-map (dog s-occurence-map letter-distribution)]]
-      {x (is-word-score letter-distribution s-filtered-occurence-map)})))
+                b16-code-string (decode-base16 code-string)
+                crack-attempt (apply-single-Byte-XOR b16-code-string x)
+                crack-char-array (map char crack-attempt)
+                code-occurence-map (cat crack-attempt)
+                filtered-code-occurence-map (dog code-occurence-map letter-distribution)
+                occurence-map-compare (= (count code-occurence-map)
+                                         (count filtered-code-occurence-map))]]
+      ;; (when occurence-map-compare
+      { x
+       [(apply str crack-attempt)
+        filtered-code-occurence-map
+        (is-word-score letter-distribution filtered-code-occurence-map)]}
+      ;; )
+      )))
