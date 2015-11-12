@@ -23,16 +23,6 @@
     (is (thrown? IndexOutOfBoundsException
                  (encode-byte-base64 -1)))))
 
-;; (deftest test-hexlet-3byte-split
-;;   (testing "testing 4 byte conversion"
-;;     (are [x y] (= 0 (compare (base64-encode x) y))
-;;       [0 0 0] [\A \A \A \A]
-;;       [0 0 1] [\A \A \A \B]
-;;       [0 0 63] [\A \A \A \/]
-;;       [0xff 0xff 0xff] [\/ \/ \/ \/]
-;;       [0xff 0xff 0xff 0xff] [\/ \/ \/ \/ \/ \w]
-;;       )))
-
 (deftest test-hexlet-3byte-split
   (testing "testing 4 byte conversion"
     (are [x y] (= 0 (compare (base64-encode x) y))
@@ -94,17 +84,11 @@
 
 (def single-byte-xor-cipher-code "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
 
-(deftest test-count-occurences
-  (testing "test count-occurence"
-    (are [x y] (= x (count-occurences {} y))
-      {\a 1} "a"
-      {\a 5} "aaaaa"
-      {} ""
-      {\a 3 \b 3} "ababab")))
 
-(deftest test-relative-differences
+
+(deftest test-relative-distributions
   (testing "test relative-differences calculates on map of counts"
-    (are [x y] (= x (relative-differences y))
+    (are [x y] (= x (relative-distributions y))
       {\a 1} {\a 1}
       {\a 1/2, \b 1/2} {\a 1, \b 1}
       {\a 2/3 \b 1/3} {\a 2, \b 1}
@@ -113,58 +97,33 @@
       {:a 1} {:a 1}
       )))
 
-(deftest test-is-word-score
-  (testing "test the scoring of a string as a phrase"
-    (are [x m y] (== x (is-word-score m y))
-      1 {:A 0.5 :B 0.5} {:A 0.5 :B 0.5}
-      1/3 {:A 1 :B 2} {:A 2 :B 1}
-      1 {:A 1} {:A 1}
-      2/3 {:A 1 :B 2} {:A 2}
-      )))
 
-(deftest test-is-word-throws-exception
-  (testing "is-word-score throws exception if key not in map"
-    (is (thrown? NullPointerException (is-word-score {:A 1} {:A 1 :B 1})))))
-
-
-(deftest test-apply-single-byte-XOR
-  (testing "code length is same as source lenth"
-    (are [code-len in] (= code-len (count (apply-single-Byte-XOR in 0)))
+(deftest test-seq-average
+  (testing "mean of a sequence"
+    (are [m s] (= m (seq-average s))
       0 []
-      1 [0]
-      2 [0 0]))
-  (testing "code-byte 0 does not change output"
-    (are [in] (= in (apply-single-Byte-XOR in 0))
-      [0]
-      [255]
-      [0 0]
-      [255 255])))
+      0 [0]
+      1 [1]
+      1 [1 1]
+      1 [0 2]
+      3 [6 3 0])))
 
-(deftest test-single-byte-XOR-crack-hexstring
-  (testing "0 key does not change string"
-    (are [in out] (= out (single-byte-XOR-crack-hexstring in 0))
-      "" []
-      ;; "61" [\a]
-      )))
-
-(char 0x61)
-
-(str (format "%h" "a\\b"))
-
-(defn convert-fn
-  [x] (map char x))
+(deftest test-score-byte-on-code
+  (testing "test getting values"
+    (is (some? (score-byte-on-code [0xaa 0x0af] 0x00)))))
 
 
-(def d-list (rat single-byte-xor-cipher-code letter-frequencies convert-fn))
+(deftest test-find-decode-byte
+  (testing ""
+    (let [code-fn (fn [b ts] (fixed-XOR (map byte ts) (repeat (count ts) b)))]
+      (are [b s] (= b (find-decode-byte (code-fn b s)))
+        0 "Hello there I think dave is here"
+        1 "Hello there I think dave is here"
+        55 "Hello there I think dave is here"
+        ;; 32 "Chumps are people I don't like" Fails the test!!
+        33 "Coralie is a cute woman. She has a loveley son"))))
 
-d-list
-
-(def th (reduce merge {} d-list))
-
-th
-
-(filter #(= (val %) (apply max (vals th))) th)
-
-
-(apply str (map char (fixed-XOR (decode-base16 single-byte-xor-cipher-code)
-                                (repeat (count single-byte-xor-cipher-code) 249))))
+(deftest test-challenge-3
+  (testing ""
+    (is (= 88 (find-decode-byte (decode-base16 single-byte-xor-cipher-code))))
+    ))

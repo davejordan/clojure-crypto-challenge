@@ -80,10 +80,86 @@
     distribution.
     Cleaning up some of the earlier code. Especially the base64
     decode.
-*** 2015-11-08
-    Detour - play around with concept of tranducers. Started watching
-    R.Hickey talk on this. Recommends "Lectures on Constructive
-    Functional Programming" by R.S
-    Bird. http://www.cs.ox.ac.uk/files/3390/PRG69.pdf and A tutorial
-    on the universality and expressiveness of fold by GRAHAM HUTTON --
-    http://www.cs.nott.ac.uk/~gmh/fold.pdf
+*** <2015-11-08>
+    + Detour - play around with concept of tranducers. Started
+      watching R.Hickey talk on this. Recommends "Lectures on
+      Constructive Functional Programming" by R.S
+      Bird. http://www.cs.ox.ac.uk/files/3390/PRG69.pdf and A tutorial
+      on the universality and expressiveness of fold by GRAHAM HUTTON
+      -- http://www.cs.nott.ac.uk/~gmh/fold.pdf
+    + I've just commited change with commented old functions. I will
+      now remove these, and just leave transducers.
+    + I was really sick of the encode-byte routine. So I ran it, and
+      copied the output directly in. Much cleaner. For reference the
+      original was:
+      #+BEGIN_SRC clojure
+        (defn encode-byte-base64
+          [b]
+          (let [crs [[\A \Z] [\a \z] [\0 \9]]
+                rfn (fn [[a b]] (range (byte a) (inc (byte b))))
+                rconj (fn [x y m] (conj (vec  m) x y))]
+            (nth (->>
+                  crs
+                  (map rfn)
+                  (rconj \+ \/)
+                  flatten
+                  (map char)) b)))
+      #+END_SRC
+      + Found function "frequencies" which counts distinct occurences
+        of items in sequence. Replaced Count-occurences. Previous code
+        was:
+      #+BEGIN_SRC clojure
+        (defn count-occurences
+          [m l]
+          (let [h (first l)
+                f (fn [a] (= h a))]
+            (cond
+              (some? h) (count-occurences
+                         (assoc m h (count (filter f l)))
+                         (remove f l))
+              :else m)))
+
+        (deftest test-count-occurences
+          (testing "test count-occurence"
+            (are [x y] (= x (count-occurences {} y))
+              {\a 1} "a"
+              {\a 5} "aaaaa"
+              {} ""
+              {\a 3 \b 3} "ababab")))
+      #+END_SRC
+*** <2015-11-09>
+    + I need to create a function that will diff two maps. Should
+      return either a map, or a sequence of differences.
+      1. Use the input map as base
+      2. for each key, output a new key that is value - value of same
+         key in reference map
+      3. If reference map does not have the key, then assume the
+         referene map has 0 as the value.
+    + I've found the merge-with function. this is perfect for my
+      needs. It takes two maps, and merges them while applying a
+      function.
+*** <2015-11-10>
+    + Finding it hard to create a test for the XOR word
+      function. There's definately something wrong with my scoring
+      function. I'm just not sure what. Why is everything scoring
+      9.9172..?
+*** <2015-11-11>
+    + I think i've got character conversion issues. Not sure how my
+      tests haven't picked this up. I'll have to review, and find
+      why. Still not getting a good word score!
+    + Finally got it working. Was a mix of dealing with special
+      characters correctly and a good comparison function. Trick was
+      to remove whitespace, but leave non-letters.This penalises
+      non-letters but ignore whitespace. Also, comparison function is
+      divide. This works better than - gives a better differentiator.
+    + Code needs a clean-up. Maybe some more tests too?? Definately a
+      clean up.
+    + Anyway, challenge complete!
+** Detect single-character XOR
+*** <2015-11-12>
+    + Probably the main steps for this challenge are:
+      - Slurp file
+      - For each line in file find the decode-byte and word score
+      - Return the line, byte and score for every line
+      - Take the line with the maximum score
+    + Did a bit of clean-up
