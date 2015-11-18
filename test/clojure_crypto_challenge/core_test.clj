@@ -1,8 +1,9 @@
 (ns clojure-crypto-challenge.core-test
   (:require [clojure-crypto-challenge.core :refer :all]
+            [clojure.java.io :as io]
+            [clojure.math.numeric-tower :as math]
             [clojure.string :as string]
-            [clojure.test :refer :all]
-            [clojure.math.numeric-tower :as math]))
+            [clojure.test :refer :all]))
 
 
 (deftest test-encode-base64
@@ -124,6 +125,14 @@
         33 "Coralie is a cute woman. She has a loveley son"))))
 
 (deftest test-challenge-3
-  (testing ""
+  (testing "Having run the solution on test data, we know answer is 88"
     (is (= 88 (find-decode-byte (decode-base16 single-byte-xor-cipher-code))))
     ))
+
+;;; Set 1 Challenge 4
+
+;; (deftest test-detect-single-character-XOR-in-file
+;;   (testing "this test is slow - disable by default"
+;;     (let [v (detect-single-character-XOR-in-file "test/clojure_crypto_challenge/4.txt")]
+;;       (is (= 170 (first v)))
+;;       (is (= 53 (second v))))))

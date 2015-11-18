@@ -1,6 +1,7 @@
 (ns clojure-crypto-challenge.core
-  (:require [clojure.string :as string]
-            [clojure.math.numeric-tower :as math]))
+  (:require [clojure.java.io :as io]
+            [clojure.math.numeric-tower :as math]
+            [clojure.string :as string]))
 
 
 ;; Set 1 Challenge 1 - Re-encode base16 to base64
@@ -147,7 +148,47 @@
      (seq-average)
      )))
 
+
+(def all-bytes (range 0x0100))
+
+(defn get-XOR-score-table
+  [s]
+  (for [x all-bytes]
+    [x (score-byte-on-code s x)]))
+
+(defn inverse [n] (/ 1 n))
+
+(defn nth-inverse
+  [n tupple]
+  (inverse (nth tupple n)))
+
+(defn get-max-tupple
+  [n l]
+  (let [sfn (fn [x] (nth-inverse n x))]
+    (->>
+     l
+     (sort-by sfn)
+     first)))
+
+(defn get-XOR-score-best-match
+  [s]
+  (get-max-tupple 1 (get-XOR-score-table s)))
+
 (defn find-decode-byte
   [s]
-  (second (first (sort-by #(/ 1 (first %)) (for [x (range 0xff)]
-                                             [(score-byte-on-code s x) x])))))
+  (first (get-XOR-score-best-match s)))
+
+
+;;; Set 1 Challenge 4
+
+
+(defn detect-single-character-XOR-in-file
+  [f]
+  (->>
+   (line-seq (io/reader f))
+   (map  decode-base16)
+   ;; get-XOR-score-table
+   (pmap get-XOR-score-best-match)
+   (map cons (range))
+   (get-max-tupple 2)
+   ))

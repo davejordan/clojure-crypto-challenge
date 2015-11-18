@@ -162,4 +162,14 @@
       - For each line in file find the decode-byte and word score
       - Return the line, byte and score for every line
       - Take the line with the maximum score
-    + Did a bit of clean-up
+    + Did a bit of clean-up and checked in.
+*** <2015-11-19>
+    + Can make this Lazy I think. Run the decoder in the file read
+      loop.
+    + I've hacked together a solution, but it is pretty slow. I'm sure
+      i can come up with something much better.
+    + The challenge test runs slow (1000ms?), so I've disabled the
+      test. Again I think this is better servered with a refactor.
+    + I'm still not convinced about my code breakdown. I want more
+      useful, small functions I can tie together.
+** Implement repeating-key XOR
