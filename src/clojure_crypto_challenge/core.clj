@@ -59,14 +59,13 @@
    decode-base16-xf
    encode-base64-xf))
 
-
 (defn decode-base16
   [xs]
   (sequence decode-base16-xf xs))
 
 (defn format-byte-as-hex
   [y]
-  (format "%h" y))
+  (format "%02x" y))
 
 (defn encode-base16
   "Encode an array of bytes to a string of Hex"
@@ -115,8 +114,9 @@
   [value-map]
   (let
       [total (reduce + (vals value-map))
-       fn (fn [k v] [k (/ v total)])]
-    (into {} (map fn (keys value-map) (vals value-map)))))
+       f (fn [k v] [k (/ v total)])]
+
+    (into {} (map f (keys value-map) (vals value-map)))))
 
 (defn compare-scores
   [x y]
@@ -192,3 +192,19 @@
    (map cons (range))
    (get-max-tupple 2)
    ))
+
+
+;;; Set 1 Challenge 5
+
+(defn create-repeating-key
+  [s]
+  (flatten (repeat (map byte s))))
+
+(defn pattern-XOR-encode
+  [p k]
+  (let [e (create-repeating-key k)]
+    (->>
+     p
+     (map byte)
+     (fixed-XOR e)
+     encode-base16)))

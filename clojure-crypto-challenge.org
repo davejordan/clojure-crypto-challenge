@@ -173,3 +173,11 @@
     + I'm still not convinced about my code breakdown. I want more
       useful, small functions I can tie together.
 ** Implement repeating-key XOR
+*** <2015-11-19>
+    + I have a small error where the Hex string representation is not
+      including leading 0s on conversions
+    + I changed the Hex encode function. Was simply change in string
+      from "%h" to "%02x".
+    + The text was correct, but a hidden \n threw me off.
+    + Challenge complete
+
