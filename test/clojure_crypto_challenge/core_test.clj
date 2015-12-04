@@ -26,7 +26,7 @@
 
 (deftest test-hexlet-3byte-split
   (testing "testing 4 byte conversion"
-    (are [x y] (= 0 (compare (base64-encode x) y))
+    (are [x y] (= 0 (compare (encode-base64 x) y))
       [0 0 0] [\A \A \A \A]
       [0 0 1] [\A \A \A \B]
       [0 0 63] [\A \A \A \/]
@@ -54,11 +54,15 @@
 (deftest test-challenge-1
   (testing "compare the challenge strings"
     (is (= base64-dest-test-code
-           (apply str (base64-encode (decode-base16 hex-source-test-code)))))))
+           (apply str (encode-base64 (decode-base16 hex-source-test-code)))))))
 
 (deftest test-challenge-1a
   (is (= base64-dest-test-code
          (apply str (sequence reencode-base16-to-64-xf hex-source-test-code)))))
+
+(deftest test-challenge-1c
+  (is (= hex-source-test-code
+         (apply str (encode-base16 (decode-base64 base64-dest-test-code))))))
 
 ;; Set 1 Challenge 2
 
@@ -139,13 +143,100 @@
 
 ;;; Set 1 Challenge 5
 
-(def test-encode-phrase "ICE")
+(def test-encode-phrase (map byte "ICE"))
 
-(def test-phrase-1 "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal")
+(def test-phrase-1 (map byte "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"))
+
 (def test-encoding-1 "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f")
 
 
 (deftest test-pattern-XOR-encode
   (testing "test that challenge phrases match"
-    (is (= test-encoding-1 (pattern-XOR-encode test-phrase-1 test-encode-phrase)))))
+    (is (= 0 (compare test-encoding-1 (pattern-XOR-encode test-phrase-1 test-encode-phrase encode-base16))))))
 
+
+;;; Set 1 Challenge 6
+
+(deftest test-get-hamming-distance
+  (testing "hamming distance of two known words (given by challenge)"
+    (are [r x y] (= r (get-hamming-distance (map byte x) (map byte y)))
+      0 "" ""
+      0 "test" "test"
+      37 "this is a test" "wokka wokka!!!")))
+
+(deftest test-get-keysize-edit-distance
+  (testing "keysize has smallest hamming distance between blocks"
+    (are [r ar k] (= r (get-keysize-edit-distance (map byte ar) k))
+      0 "aa" 1
+      1 "on" 1
+      1 "oonn" 2
+      2 "ooll" 2)))
+
+(def test-file-challenge-6 (slurp "test/clojure_crypto_challenge/6.txt"))
+
+(def test-file-challenge-6a (line-seq (io/reader "test/clojure_crypto_challenge/6.txt")))
+
+
+(def test-file-challenge-6b (decode-base64 test-file-challenge-6a))
+
+
+(map  #(block-sequence test-file-challenge-6b %) (get-keysizes test-file-challenge-6b))
+
+
+(break-repeat-XOR-cypher test-file-challenge-6b)
+
+(def km (map byte [95 83 94 84 94]))
+
+(def tt (str (map char [95 83 94 84 94])))
+
+
+
+(apply str (map char (pattern-XOR-encode test-file-challenge-6b km)))
+
+(deftest test-break-repeat-XOR-cypher
+  (testing "TDD build up"))
+
+
+
+
+;;; Extract for anlaysis in R - dumping to file
+(defn temp []
+  (->>
+   (line-seq (io/reader "test/clojure_crypto_challenge/4.txt"))
+   (map  decode-base16)
+   (fn [s]
+     (for [x all-bytes]
+       (->>
+        (fixed-XOR (repeat x))
+        (frequencies-upper-case-insensitive)
+        (relative-distributions)
+        (merge-with compare-scores letter-frequencies)
+        (vals)
+        (seq-average))))
+   (pmap get-XOR-score-table)
+   (map cons (range))
+   ))
+
+
+
+(defn test-table [s]
+  (for [i all-bytes]
+    (fixed-XOR (repeat i) s)))
+
+
+(defn pp [] (test-table (decode-base16 single-byte-xor-cipher-code)))
+
+;; (defn tt [] (map #(apply str (map char %)) (pp)))
+
+;; (defn cc [x] (apply str (interleave x (repeat ","))))
+
+
+
+(with-open [w (clojure.java.io/writer  "r/dump.txt")]
+  (doseq [k (pp)]
+    (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
+
+
+;; (with-open [w (clojure.java.io/writer  "r/dump.txt")]
+;;   (doseq [[i j k] (for [[a & x] (temp), y x] (conj y a))]
+;;     (.write w (str i "," j "," k "\r\n"))))

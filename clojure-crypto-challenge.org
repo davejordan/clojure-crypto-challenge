@@ -180,4 +180,78 @@
       from "%h" to "%02x".
     + The text was correct, but a hidden \n threw me off.
     + Challenge complete
-
+** Break repeating-key XOR
+*** <2015-11-20>
+    + First task is to get Hamming distance between two words. I think
+      this is straight forward using Integer.bitCount from Java. Yes,
+      it was pretty simple.
+    + To solve the main problem I just need to compose existing items:
+      - Slurp file
+      - Decode from base64
+      - Find the keysize
+        - Get the number between 2 and 40 with the minimum hamming
+      - Break the code into blocks
+      - Solve each block as single - keep the decode byte
+      - Combine the decode bytes
+    + I need to create a decode-base64 function. I've only got a
+      decode function at the moment.
+    + Actually, I found the Java 8 function
+      Base64.Decoder.decode. Have created a wrapper that converts
+      input to string, and output to vector. Nice and simple.
+    + I've put together a skeleton, but it's not right. I've run it,
+      and get jibberish results. Not sure what's going wrong. Assume
+      the key i'm discovering is wrong, as I'd expect challenge to use
+      an actual word as a key. The current key I'm getting is :[95 83
+      94 84 94]
+*** <2015-11-27>
+    + It's been a while. I've been working on a presentation for RSS,
+      and in the mean time I have learnt a lot about R statistics
+      language. I think I will give it a go plotting some of the
+      output of my algoriths.
+    + I plotted output. The outlier is not very clear. I'm wondering
+      if my frequency difference algorithm needs tweaking. I'll have a
+      look at this.
+*** <2015-11-28>
+    + Started twaking a copy of my frequency difference table. Not
+      ready yet, so I commented it back out.
+*** <2015-11-29>
+    + Have been playing a lot with R on this. Noticed some interesting
+      things. The SD and variance on letter frequencies is the same
+      for every encoded string. This makes sense because we're
+      modifing all letters exactly the same way with the XOR
+      byte.
+      This leads to the simple conclusion that we can't score phrases
+      as english without taking into consideration the frequencies of
+      actual letters (i.e. can't just score based on spread, mean, etc).
+    + Have also found, which I'd ignored, the frequencies for spaces,
+      white-space, and other punctuation. The "Space" is
+      1.918182% (this treats carriage return as space). In fact, all
+      non-letter characters (including space) represent 6.57%.
+    + Next nice little exercise in R would be to load in the letter
+      frequencies and actually graph a comparison.
+*** <2015-11-30>
+    + Have got a simple comparison of known letter frequency and
+      decoded message letter frequency. The method I was using does
+      not give a great answer. There is no "stand-out" winner, in
+      terms of phrase score.
+*** <2015-12-01>
+    + Looking at score distributions, I think I really need a way to
+      take non-valid characters into account. Some sort of score
+      penalty for each non-printable character? Or maybe subtract
+      non-printable characters from the total. Or maybe subtract all
+      whitespace, except " ", from total?
+*** <2015-12-02>
+    + I've tried a Chi-Test on this, and also removed the comparison
+      of relative (by multiplying by string length C=34). I'm still
+      getting two out-liers. This definately needs a extra test on the
+      types of characters included.
+    + Another type of plot that will be interesting is character
+      spread coloured by score. This will mean the columns are
+      coloured, but the rows will show which characters are being
+      used. I could also colour the values by character range..
+*** <2015-12-03>
+    + I've modified my Chi-Test. It now uses two values for NA in the
+      expected value. It uses 0 in numerator, and 1 in
+      denominator. Currently, this is two conditionals, but I'm sure
+      can make this better. Anyway, result is now have a better
+      outlier (minimum in this case) to identify.

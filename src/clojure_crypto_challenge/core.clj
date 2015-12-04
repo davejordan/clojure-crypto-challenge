@@ -1,7 +1,9 @@
 (ns clojure-crypto-challenge.core
   (:require [clojure.java.io :as io]
             [clojure.math.numeric-tower :as math]
-            [clojure.string :as string]))
+            [clojure.string :as string])
+  (:import  java.util.Base64
+            java.nio.charset.StandardCharsets))
 
 
 ;; Set 1 Challenge 1 - Re-encode base16 to base64
@@ -31,6 +33,13 @@
         pad (into (vec t) (repeat padding 0))]
     (take tk (hexlet-3byte-split pad))))
 
+(def b64-decoder (Base64/getDecoder))
+
+(defn decode-base64
+  [ar]
+  (vec (.decode b64-decoder (apply str ar))))
+
+
 (defn decode-character-base16
   [x]
   (Integer/parseInt (str x) 16))
@@ -49,7 +58,7 @@
    (mapcat hexlet-padded-3byte-split)
    (map encode-byte-base64)))
 
-(defn base64-encode
+(defn encode-base64
   [xa]
   (vec (sequence encode-base64-xf xa)))
 
@@ -100,6 +109,15 @@
   [c]
   (Character/toUpperCase c))
 
+(defn is-iso-control?
+  [c]
+  (Character/isISOControl c))
+
+(defn is-not-iso-control?
+  [c]
+  (not (is-iso-control? c)))
+
+
 (def sanitise-char-array-xf
   (comp
    (remove is-whitespace?)
@@ -110,12 +128,13 @@
   [l]
   (frequencies (sequence sanitise-char-array-xf l)))
 
+
+
 (defn relative-distributions
   [value-map]
   (let
       [total (reduce + (vals value-map))
        f (fn [k v] [k (/ v total)])]
-
     (into {} (map f (keys value-map) (vals value-map)))))
 
 (defn compare-scores
@@ -134,10 +153,9 @@
   (let [byte-arr (repeat (count char-arr) b)]
     (fixed-XOR byte-arr char-arr)))
 
-
 (defn score-byte-on-code
   [c b]
-  (let [s (repeat (count c) b)]
+  (let [s (repeat b)]
     (->>
      c
      (fixed-XOR s)
@@ -148,13 +166,12 @@
      (seq-average)
      )))
 
-
 (def all-bytes (range 0x0100))
 
 (defn get-XOR-score-table
   [s]
   (for [x all-bytes]
-    [x (score-byte-on-code s x)]))
+    [x]))
 
 (defn inverse [n] (/ 1 n))
 
@@ -187,7 +204,6 @@
   (->>
    (line-seq (io/reader f))
    (map  decode-base16)
-   ;; get-XOR-score-table
    (pmap get-XOR-score-best-match)
    (map cons (range))
    (get-max-tupple 2)
@@ -201,10 +217,77 @@
   (flatten (repeat (map byte s))))
 
 (defn pattern-XOR-encode
-  [p k]
-  (let [e (create-repeating-key k)]
-    (->>
-     p
-     (map byte)
-     (fixed-XOR e)
-     encode-base16)))
+  ([code-string code-key]
+   (pattern-XOR-encode code-string code-key (fn [x] (identity x))))
+  ([code-string code-key encode-fn]
+   (let [e (create-repeating-key code-key)]
+     (->>
+      code-string
+      (fixed-XOR e)
+      encode-fn))))
+
+;;; Set 1 Challenge 6
+(defn- bit-count
+  [x]
+  (Integer/bitCount x))
+
+(defn get-hamming-distance
+  [x y]
+  (->>
+   (fixed-XOR x y)
+   (map bit-count)
+   (reduce +)))
+
+(defn get-keysize-edit-distance
+  "get the mean keysize distance of k in the sequence
+  of bytes ar. Returns a number"
+  [ar k]
+  (let [x (take k ar)
+        y (take k (drop k ar))]
+    (/ (get-hamming-distance x y) k)))
+
+(defn get-keysizes
+  ([code-phrase] (get-keysizes code-phrase 4))
+  ([code-phrase n] (get-keysizes code-phrase n 2 41))
+  ([code-phrase n start end]
+   (map first
+        (take n
+              (sort-by #(second %)
+                       (for [i (range start end)]
+                         [i (get-keysize-edit-distance code-phrase i)]))))))
+
+(defn block-sequence
+  [source block-width]
+  (for [k (range block-width)]
+    (take-nth block-width (drop k source))))
+
+
+(defn break-repeat-XOR-cypher
+  "Return the key used to XOR the code-phrase. Code
+  phrase is a seq bytes. Returns a seq bytes"
+  [code-phrase]
+  (map find-decode-byte (first (map #(block-sequence code-phrase %) (get-keysizes code-phrase)))))
+
+
+
+(def pt (partition-all 3 [1 2 3 4 5 6 7 8 9 10]))
+pt
+
+(apply map (partial conj []) pt)
+
+(def kk [1 2 3 4 5 6 7 8 9 10])
+
+pt
+
+(for [x (range 3)]
+  (take-nth 3 (drop x kk)))
+
+
+
+(take-nth 2 (range 9))
+
+(map (partial conj [])  [1 2 3] [4 5 6] [7 8 9])
+
+
+(map format-byte-as-hex (map byte "oo"))
+(map format-byte-as-hex (map byte "nn"))
