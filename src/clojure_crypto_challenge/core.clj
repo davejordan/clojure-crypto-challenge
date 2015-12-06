@@ -171,7 +171,7 @@
 (defn get-XOR-score-table
   [s]
   (for [x all-bytes]
-    [x]))
+    [x (score-byte-on-code s x)]))
 
 (defn inverse [n] (/ 1 n))
 

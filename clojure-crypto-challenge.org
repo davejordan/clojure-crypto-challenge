@@ -255,3 +255,43 @@
       denominator. Currently, this is two conditionals, but I'm sure
       can make this better. Anyway, result is now have a better
       outlier (minimum in this case) to identify.
+*** <2015-12-05 Sat>
+    + I did quite a bit last night, but didn't journal it. Not a good
+      habbit to get into!
+    + Last night I cleaned up the R code. Also, I cleared the
+      buffer. This was actually a long task, as the buffer was huge
+      (300k?). I had to force emacs to close, as it was unresponsive.
+    + I've removed a lot of the junk from core.r. Down to 91 lines
+      including plot.
+    + The plot is now showing progression of the score over each
+      iteration. This is interesting - the winning score does not
+      shine until quite late in the scoring. I wonder if there is a
+      better way? Or maybe a way to rule out sequences early in the
+      process? Another idea is maybe create a bounding function that
+      excludes falses early.
+*** <2015-12-06 Sun>
+    + I've installed Criterium. This is a clojure benchmarking
+      tool. The idea being I can collect and benchmark the various
+      algorithms for finding english
+      phrases. https://github.com/hugoduncan/criterium/
+    + Powershell command number lines in file:
+      #+begin_src
+      Get-Content test/clojure_crypto_challenge/4.txt | Measure-Object -Line
+      #+end_src
+    + Just found problem in core.clj. Lucky for source control. Was
+      able to compare against previous commit. For future reference
+      the command was "
+      #+begin_src
+      git diff HEAD^1 -- .\src\clojure_crypto_challenge\core.clj"
+      #+end_src
+    + I modified the R program, and think I have a nicer
+      function. Instead of using the actual expected value of the
+      letters - which for small strings always evaluates less than 1 -
+      I use a rounded value. There are differences between ceiling,
+      floor, and round. Round works the best - but must be carefull to
+      treat "0" as "NA" (so the Chi score = x^2, not (x-y)^2/y -which
+      would go infinity).
+      + Also, the bounding function seems to be a straight line. Maybe
+        at 2.5? Would need to tweak this, as it will be skewed by
+        selected sample.
+    +

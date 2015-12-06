@@ -3,7 +3,9 @@
             [clojure.java.io :as io]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as string]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all]
+            [criterium.core :as crit]
+            ))
 
 
 (deftest test-encode-base64
@@ -129,20 +131,28 @@
         33 "Coralie is a cute woman. She has a loveley son"))))
 
 (deftest test-challenge-3
+  ;; The plain text is  "Cooking MC's like a pound of bacon"
   (testing "Having run the solution on test data, we know answer is 88"
     (is (= 88 (find-decode-byte (decode-base16 single-byte-xor-cipher-code))))
     ))
 
-;;; Set 1 Challenge 4
+;; (crit/bench (find-decode-byte (decode-base16 single-byte-xor-cipher-code)))
 
-;; (deftest test-detect-single-character-XOR-in-file
-;;   (testing "this test is slow - disable by default"
-;;     (let [v (detect-single-character-XOR-in-file "test/clojure_crypto_challenge/4.txt")]
-;;       (is (= 170 (first v)))
-;;       (is (= 53 (second v))))))
+
+;;; Set 1 Challenge 4
+;; Test file has 327 lines, 19618 characters.
+;; LIne lengths are 60, except last line which is 58
+
+;; (crit/bench (deftest test-detect-single-character-XOR-in-file
+;;               (testing "this test is slow - disable by default"
+;;                 (let
+;;                     [v (detect-single-character-XOR-in-file
+;;                         "test/clojure_crypto_challenge/4.txt")]
+;;                   (is (= 170 (first v)))
+;;                   (is (= 53 (second v)))))))
+
 
 ;;; Set 1 Challenge 5
-
 (def test-encode-phrase (map byte "ICE"))
 
 (def test-phrase-1 (map byte "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"))
@@ -219,6 +229,7 @@
 
 
 
+
 (defn test-table [s]
   (for [i all-bytes]
     (fixed-XOR (repeat i) s)))
@@ -226,17 +237,17 @@
 
 (defn pp [] (test-table (decode-base16 single-byte-xor-cipher-code)))
 
-;; (defn tt [] (map #(apply str (map char %)) (pp)))
-
-;; (defn cc [x] (apply str (interleave x (repeat ","))))
-
-
 
 (with-open [w (clojure.java.io/writer  "r/dump.txt")]
   (doseq [k (pp)]
     (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
 
 
+;; (defn flk [] (slurp "test/clojure_crypto_challenge/4.txt"))
+
+;; (defn fl2 [] (string/split (flk) #"\n"))
+
 ;; (with-open [w (clojure.java.io/writer  "r/dump.txt")]
-;;   (doseq [[i j k] (for [[a & x] (temp), y x] (conj y a))]
-;;     (.write w (str i "," j "," k "\r\n"))))
+  ;; (doseq [s (fl2)
+          ;; k (test-table (decode-base16  s))]
+    ;; (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
