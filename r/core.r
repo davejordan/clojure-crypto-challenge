@@ -92,19 +92,49 @@ letter_freq <- format_letter_freq_by_character(read.csv("letters.txt", header=TR
 
 
 ## This function does incremental line score (each score is / n(line so far)
-calculate_word_scores <- function(df, lf) {
+merge_expected_and_attemp <- function(df, lf) {
     merge(x=df, y=lf,
           all.x=TRUE,by.x="character_position", by.y="character_code") %>%
         mutate(expected_frequency = relative_frequency*as.integer(position),
                chi_score=chi_distance(character_frequency, expected_frequency)) %>%
+        tbl_df
+}
+
+line_score <-  function(df) {
+    df %>%
         group_by(attempt, position, character) %>%
         summarise(score=sum(chi_score)) %>%
         tbl_df
 }
 
+tmp <- merge_expected_and_attemp(df, letter_freq)
 
-df.merged <-  calculate_word_scores(df, letter_freq)
+tmp2 <- tmp %>%
+    mutate(character_int = as.integer(character_position)-1) %>%
+    mutate(affected_line= character_int==character)
 
+summary(tmp2)
+tmp2
+
+tmp3 <-
+    tmp2 %>%
+    arrange(attempt, as.integer(position), character_position) %>%
+    group_by(attempt) %>%
+    mutate(running_letter_count=cumsum(affected_line)) %>%
+    mutate(expected_frequency=running_letter_count*relative_frequency) %>%
+    mutate(chi_score=chi_distance(character_frequency, expected_frequency))
+
+
+
+df.merged <-
+    merge_expected_and_attemp(df, letter_freq)  %>%
+    line_score
+
+df.merged <-
+    tmp3 %>%
+    line_score
+
+df.merged
 
 paint_trials <- function(df) {
     winning_attempt <-
@@ -114,7 +144,6 @@ paint_trials <- function(df) {
         slice(1) %>%
         select(attempt) %>%
         as.numeric
-
 
     df$color <- winning_attempt==df$attempt
     df$pos <- df$score/as.integer(df$position)
@@ -129,13 +158,18 @@ paint_trials <- function(df) {
         arrange(attempt, position) %>%
         mutate(running_min_character=cummin(character_group)) %>%
         tbl_df
-    df.merged.painted$running_min_character.factor <- as.factor(tmp2$running_min_character)
+
+    df.merged.painted$running_min_character.factor <-
+        as.factor(df.merged.painted$running_min_character)
     return(df.merged.painted)
 }
 
 df.merged.painted <- paint_trials(df.merged)
 
 tmp <-  filter(df.merged.painted, pos<2.5) ##constrained version
+tmp <- filter(tmp, running_min_character>1)
+
+
 
 ggplot(tmp, aes(x=position,y=pos,
                 group=attempt,

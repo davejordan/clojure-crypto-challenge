@@ -109,6 +109,7 @@
   [c]
   (Character/toUpperCase c))
 
+
 (defn is-iso-control?
   [c]
   (Character/isISOControl c))
@@ -127,7 +128,6 @@
 (defn frequencies-upper-case-insensitive
   [l]
   (frequencies (sequence sanitise-char-array-xf l)))
-
 
 
 (defn relative-distributions
@@ -187,13 +187,31 @@
      (sort-by sfn)
      first)))
 
+;; Old version
 (defn get-XOR-score-best-match
   [s]
   (get-max-tupple 1 (get-XOR-score-table s)))
 
+(defn get-XOR-score-best-match
+  [s]
+  (min-tupple 1 (get-XOR-score-table s)))
+
+
+;; Old version
 (defn find-decode-byte
   [s]
   (first (get-XOR-score-best-match s)))
+
+;; Redefine find decode byte function
+;; (this is because the detection is now using minimum)
+(defn min-tupple
+  [i v]
+  (apply min-key #(nth % i) v))
+
+
+(defn find-decode-byte
+  [x]
+  (first (min-tupple 1 (get-XOR-score-table x))))
 
 
 ;;; Set 1 Challenge 4
@@ -206,7 +224,8 @@
    (map  decode-base16)
    (pmap get-XOR-score-best-match)
    (map cons (range))
-   (get-max-tupple 2)
+   ;; (get-max-tupple 2)
+   (min-tupple 2)
    ))
 
 
@@ -270,24 +289,99 @@
 
 
 
-(def pt (partition-all 3 [1 2 3 4 5 6 7 8 9 10]))
-pt
+;; ------------
 
-(apply map (partial conj []) pt)
+(def in [1 2 2 1 3 3 1 4 5])
 
-(def kk [1 2 3 4 5 6 7 8 9 10])
+(def rel {1 1/3, 2 2/3})
 
-pt
-
-(for [x (range 3)]
-  (take-nth 3 (drop x kk)))
+(def ot {:freq {1 3, 2 2, 3 2, 4 1, 5 1} })
 
 
-
-(take-nth 2 (range 9))
-
-(map (partial conj [])  [1 2 3] [4 5 6] [7 8 9])
+(reduce (fn [x y] (if (< y 6) (conj x y) (reduced nil))) [] in)
 
 
-(map format-byte-as-hex (map byte "oo"))
-(map format-byte-as-hex (map byte "nn"))
+
+;; Little byte array tests and exmples... will this be quicker??
+(def dx (bytes (byte-array (map (comp byte int) "ascii"))))
+
+(def bs (byte-array 10))
+(vec bs)
+(aset-byte bs 2 127)
+
+(def d2 [1 2 3 4 4 2 1])
+(def xf (map identity))
+(transduce xf + d2)
+
+(type (bit-and (byte 127) 1))
+(type (byte 127))
+(bit-flip (byte 127) 1)
+
+(eduction xf d2)
+(sequence xf d2)
+
+
+(defn do-to [m f]
+  (reduce #(assoc %1 %2 (f (m %2))) {} (keys m)))
+
+
+
+(def scaled-letter-frequencies (do-to letter-frequencies #(math/round (* 34 %))))
+
+(defn chi_distance [x y]
+  (let [nay (or (nil? y) (= y 0))]
+    (if nay (math/expt x 2) (/ (math/expt (- x y) 2) y))))
+
+(defn chi_distance [x y]
+  (/ (math/expt (- y x) 2) x))          ;not working!!
+
+
+(def lfs (slurp "./r/letters.txt"))
+
+
+(defn score-byte-on-code
+  [c b]
+  (let [s (repeat b)]
+    (->>
+     c
+     (fixed-XOR s)
+     frequencies
+     ;; (relative-distributions)
+     (merge-with chi_distance fixed-letter-map)
+     (vals)
+     (reduce +)
+     )))
+
+
+(min-key #(% 0) [[1 3] [2 3] [0 4]])
+
+(sort-by #(% 0) [[1 3] [2 3] [0 4]])
+
+
+;; Load letters to map from file
+(def str-pairs (map #(string/split % #", ") str-seqs))
+(def str-pairs-conf (filter #(== 2 (count %)) str-pairs))
+(def clean-str-pairs (map #(vector (% 0) (int (math/round (* 34 (bigdec (% 1)))))) (drop 1 str-pairs-conf)))
+
+
+
+(defn clean-space [s] (if (= s "SPACE") " " s))
+(defn clean-space-v [v] (vector (clean-space (v 0)) (v 1)))
+
+(defn convert-byte [c] (apply byte c))
+(defn convert-byte-v [v] (vector (convert-byte (v 0)) (v 1)))
+
+(defn make-upper-case [v] (vector (string/upper-case (v 0)) (v 1)))
+(defn duplicate-upper-case [v] (vector v (make-upper-case v)))
+
+
+(def fixed-letter-map
+  (->>
+   clean-str-pairs
+   (map clean-space-v)
+   (map duplicate-upper-case)
+   (reduce #(into %1 %2) [])
+   (map convert-byte-v)
+   sort
+   (drop 1)
+   (into {})))

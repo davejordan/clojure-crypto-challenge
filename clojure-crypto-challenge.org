@@ -294,4 +294,78 @@
       + Also, the bounding function seems to be a straight line. Maybe
         at 2.5? Would need to tweak this, as it will be skewed by
         selected sample.
+    + Have theory that I can make reducer/transducer that will iterate
+      over sequences to produce score incrementally. I've proven in R
+      that I can make the relative frequency scoring a bit
+      inconsitent. That is: I apply the current length of the string
+      to the expected frequency of a character only when that
+      character changes. For example, if I have [a b c a] then the
+      expected frequency of a will be 1*ra, b=2*rb, c=3*rc, then
+      a=4*ra. The correct way would be to reapply the length of the
+      string each time, but it is much more expensive.
+*** <2015-12-07 Mon>
+    + Results for find-decode-byte are (34 byte string):
+    #+begin_src
+WARNING: Final GC required 23.942862803765088 % of runtime
+Evaluation count : 12 in 6 samples of 2 calls.
+             Execution time mean : 69.644419 ms
+    Execution time std-deviation : 1.923525 ms
+   Execution time lower quantile : 67.551807 ms ( 2.5%)
+   Execution time upper quantile : 71.815317 ms (97.5%)
+                   Overhead used : 1.495886 ns
+    #+end_src
+    +Results for (score-byte-on-code dcb 120) (34 B string):
+    #+begin_src
+WARNING: Final GC required 37.60666036507942 % of runtime
+Evaluation count : 2178 in 6 samples of 363 calls.
+             Execution time mean : 273.585496 탎
+    Execution time std-deviation : 979.771885 ns
+   Execution time lower quantile : 272.300182 탎 ( 2.5%)
+   Execution time upper quantile : 274.663612 탎 (97.5%)
+                   Overhead used : 1.495886 ns
+Evaluation count : 220560 in 60 samples of 3676 calls.
+             Execution time mean : 275.487018 탎
+    Execution time std-deviation : 2.555552 탎
+   Execution time lower quantile : 271.487064 탎 ( 2.5%)
+   Execution time upper quantile : 280.615661 탎 (97.5%)
+                   Overhead used : 1.495886 ns
+
+Found 2 outliers in 60 samples (3.3333 %)
+        low-severe       2 (3.3333 %)
+ Variance from outliers : 1.6389 % Variance is slightly inflated by outliers
+    #+end_src
+    +Results for modified score-byte-on-code. Removed relatives. Is
+    increased because have added Chi-Square calculation.
+    #+begin_src
+Evaluation count : 229140 in 60 samples of 3819 calls.
+             Execution time mean : 301.395905 탎
+    Execution time std-deviation : 48.365102 탎
+   Execution time lower quantile : 260.841685 탎 ( 2.5%)
+   Execution time upper quantile : 368.774154 탎 (97.5%)
+                   Overhead used : 1.495886 ns
+    #+end_src
+*** <2015-12-08 Tue>
+    + Fixed the program and re-ran benchmark
+    #+begin_src
+Evaluation count : 1684860 in 60 samples of 28081 calls.
+             Execution time mean : 41.641212 탎
+    Execution time std-deviation : 6.201605 탎
+   Execution time lower quantile : 34.396472 탎 ( 2.5%)
+   Execution time upper quantile : 50.699054 탎 (97.5%)
+                   Overhead used : 1.495886 ns
+    #+end_src
+    + Re-run (crit/bench (find-decode-byte dcb)) - I modified this to
+      choose the minimum because of the new chi function
+    #+begin_src
+WARNING: Final GC required 33.70386639794799 % of runtime
+Evaluation count : 90 in 6 samples of 15 calls.
+             Execution time mean : 6.641849 ms
+    Execution time std-deviation : 125.487250 탎
+   Execution time lower quantile : 6.535929 ms ( 2.5%)
+   Execution time upper quantile : 6.782285 ms (97.5%)
+                   Overhead used : 1.495886 ns
+    #+end_src
+    + Need to be careful with state of code. Have broken quite a few
+      things. But, on the plus side I think I've sped it up an order
+      of magnitude - at least.
     +

@@ -136,21 +136,23 @@
     (is (= 88 (find-decode-byte (decode-base16 single-byte-xor-cipher-code))))
     ))
 
-;; (crit/bench (find-decode-byte (decode-base16 single-byte-xor-cipher-code)))
-
 
 ;;; Set 1 Challenge 4
 ;; Test file has 327 lines, 19618 characters.
 ;; LIne lengths are 60, except last line which is 58
 
-;; (crit/bench (deftest test-detect-single-character-XOR-in-file
-;;               (testing "this test is slow - disable by default"
-;;                 (let
-;;                     [v (detect-single-character-XOR-in-file
-;;                         "test/clojure_crypto_challenge/4.txt")]
-;;                   (is (= 170 (first v)))
-;;                   (is (= 53 (second v)))))))
+;; (deftest test-detect-single-character-XOR-in-file
+;;   (testing "this test is slow - disable by default"
+;;     (let
+;;         [v (detect-single-character-XOR-in-file
+;;             "test/clojure_crypto_challenge/4.txt")]
+;;       (is (= 170 (first v)))
+;;       (is (= 53 (second v))))))
 
+(apply min-key #(nth % 2) (detect-single-character-XOR-in-file  "test/clojure_crypto_challenge/4.txt"))
+
+
+(detect-single-character-XOR-in-file "test/clojure_crypto_challenge/4.txt")
 
 ;;; Set 1 Challenge 5
 (def test-encode-phrase (map byte "ICE"))
@@ -191,6 +193,17 @@
 
 
 (map  #(block-sequence test-file-challenge-6b %) (get-keysizes test-file-challenge-6b))
+
+
+
+
+
+
+
+
+
+
+
 
 
 (break-repeat-XOR-cypher test-file-challenge-6b)
@@ -243,11 +256,22 @@
     (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
 
 
+;; ---------
+(crit/quick-bench (def dcb (decode-base16 single-byte-xor-cipher-code)))
+(crit/quick-bench (find-decode-byte dcb))
+(crit/bench (score-byte-on-code dcb 120))
+
+(find-decode-byte dcb)
+
+(score-byte-on-code dcb 88)
+
+
+
 ;; (defn flk [] (slurp "test/clojure_crypto_challenge/4.txt"))
 
 ;; (defn fl2 [] (string/split (flk) #"\n"))
 
 ;; (with-open [w (clojure.java.io/writer  "r/dump.txt")]
-  ;; (doseq [s (fl2)
-          ;; k (test-table (decode-base16  s))]
-    ;; (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
+;; (doseq [s (fl2)
+;; k (test-table (decode-base16  s))]
+;; (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
