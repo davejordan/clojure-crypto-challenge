@@ -93,27 +93,6 @@
 
 
 
-(deftest test-relative-distributions
-  (testing "test relative-differences calculates on map of counts"
-    (are [x y] (= x (relative-distributions y))
-      {\a 1} {\a 1}
-      {\a 1/2, \b 1/2} {\a 1, \b 1}
-      {\a 2/3 \b 1/3} {\a 2, \b 1}
-      {\a 1/3 \b 1/3 \c 1/3} {\a 1 \b 1\c 1}
-      {} {}
-      {:a 1} {:a 1}
-      )))
-
-
-(deftest test-seq-average
-  (testing "mean of a sequence"
-    (are [m s] (= m (seq-average s))
-      0 []
-      0 [0]
-      1 [1]
-      1 [1 1]
-      1 [0 2]
-      3 [6 3 0])))
 
 (deftest test-score-byte-on-code
   (testing "test getting values"
@@ -140,19 +119,14 @@
 ;;; Set 1 Challenge 4
 ;; Test file has 327 lines, 19618 characters.
 ;; LIne lengths are 60, except last line which is 58
+(deftest test-detect-single-character-XOR-in-file
+  (testing "test find byte in file"
+    (let
+        [v (detect-single-character-XOR-in-file
+            "test/clojure_crypto_challenge/4.txt")]
+      (is (= 170 (first v)))
+      (is (= 53 (second v))))))
 
-;; (deftest test-detect-single-character-XOR-in-file
-;;   (testing "this test is slow - disable by default"
-;;     (let
-;;         [v (detect-single-character-XOR-in-file
-;;             "test/clojure_crypto_challenge/4.txt")]
-;;       (is (= 170 (first v)))
-;;       (is (= 53 (second v))))))
-
-(apply min-key #(nth % 2) (detect-single-character-XOR-in-file  "test/clojure_crypto_challenge/4.txt"))
-
-
-(detect-single-character-XOR-in-file "test/clojure_crypto_challenge/4.txt")
 
 ;;; Set 1 Challenge 5
 (def test-encode-phrase (map byte "ICE"))
@@ -184,86 +158,112 @@
       1 "oonn" 2
       2 "ooll" 2)))
 
+
 (def test-file-challenge-6 (slurp "test/clojure_crypto_challenge/6.txt"))
 
 (def test-file-challenge-6a (line-seq (io/reader "test/clojure_crypto_challenge/6.txt")))
 
-
 (def test-file-challenge-6b (decode-base64 test-file-challenge-6a))
 
 
-(map  #(block-sequence test-file-challenge-6b %) (get-keysizes test-file-challenge-6b))
+
+;; --Experimenting to find
+
+(sort-by second (get-XOR-score-table (decode-base16 single-byte-xor-cipher-code)))
+
+(apply str (map char (fixed-XOR (repeat 120) (decode-base16 single-byte-xor-cipher-code))))
+
+(frequencies  (fixed-XOR (repeat 120) (decode-base16 single-byte-xor-cipher-code)))
+(frequencies  (fixed-XOR (repeat 88) (decode-base16 single-byte-xor-cipher-code)))
+
+(def xored-patterns
+  (map pattern-XOR-encode
+       (repeat test-file-challenge-6b)
+       (map  #(map find-decode-byte (block-sequence test-file-challenge-6b %))
+             (get-keysizes test-file-challenge-6b))))
+
+(merge-with -
+            (memo-map-reference-lists llist (count (last xored-patterns)))
+            (frequencies (map to-upper-case (last xored-patterns))))
+
+
+((memo-map-reference-lists llist (count (last xored-patterns))) 65)
+((frequencies (last xored-patterns)) 65)
+
+(char 65)
+
+;; (reduce + (vals (frequencies (last xored-patterns))))
+
+(count (last xored-patterns))
+
+(map frequencies (map #(apply str (map char %)) xored-patterns))
+
+(apply min (map score-line-as-english xored-patterns))
+
+(map score-line-as-english xored-patterns)
+
+
+(Integer/toString 0x41 2)
+(Integer/toString (bit-and 0x61 0xBF) 2)
+(Integer/toString 0x5A 2)
+(Integer/toString 0x7A 2)
+(Integer/toString 0x7F 2)
+(Integer/toString 0x20 2)
+(Integer/toString 0x1F 2)
+
+
+()
+
+
+(to-upper-case 97)
+(byte \a)
+
+(map #(pattern-XOR-encode test-file-challenge-6b %))
+
+(score-line-as-english (map byte "this is a great time to test"))
+
+
+(get-keysizes test-file-challenge-6b)
+
+(defn- decode-bytes [x] (map find-decode-byte (block-sequence test-file-challenge-6b x)))
+
+
+(defn- decode-string [x] (apply str (map char (decode-bytes x))))
 
 
 
+(decode-string 29)
+
+;; (apply str (map char (pattern-XOR-encode test-file-challenge-6b decode-string)))
+
+;; (take 20 (create-repeating-key decode-string))
 
 
 
+;;; Extract for anlaysis in R - dumping to file-----------
 
 
+;; (defn test-table [s]
+;;   (for [i all-bytes]
+;;     (fixed-XOR (repeat i) s)))
 
 
+;; (defn pp [] (test-table (decode-base16 single-byte-xor-cipher-code)))
 
 
-
-(break-repeat-XOR-cypher test-file-challenge-6b)
-
-(def km (map byte [95 83 94 84 94]))
-
-(def tt (str (map char [95 83 94 84 94])))
+;; (with-open [w (clojure.java.io/writer  "r/dump.txt")]
+;;   (doseq [k (pp)]
+;;     (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
 
 
+;; Benchmarks-------
+;; (crit/quick-bench (def dcb (decode-base16 single-byte-xor-cipher-code)))
+;; (crit/quick-bench (find-decode-byte dcb))
+;; (crit/bench (score-byte-on-code dcb 120))
 
-(apply str (map char (pattern-XOR-encode test-file-challenge-6b km)))
+;; (find-decode-byte dcb)
 
-(deftest test-break-repeat-XOR-cypher
-  (testing "TDD build up"))
-
-
-
-
-;;; Extract for anlaysis in R - dumping to file
-(defn temp []
-  (->>
-   (line-seq (io/reader "test/clojure_crypto_challenge/4.txt"))
-   (map  decode-base16)
-   (fn [s]
-     (for [x all-bytes]
-       (->>
-        (fixed-XOR (repeat x))
-        (frequencies-upper-case-insensitive)
-        (relative-distributions)
-        (merge-with compare-scores letter-frequencies)
-        (vals)
-        (seq-average))))
-   (pmap get-XOR-score-table)
-   (map cons (range))
-   ))
-
-
-
-
-(defn test-table [s]
-  (for [i all-bytes]
-    (fixed-XOR (repeat i) s)))
-
-
-(defn pp [] (test-table (decode-base16 single-byte-xor-cipher-code)))
-
-
-(with-open [w (clojure.java.io/writer  "r/dump.txt")]
-  (doseq [k (pp)]
-    (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
-
-
-;; ---------
-(crit/quick-bench (def dcb (decode-base16 single-byte-xor-cipher-code)))
-(crit/quick-bench (find-decode-byte dcb))
-(crit/bench (score-byte-on-code dcb 120))
-
-(find-decode-byte dcb)
-
-(score-byte-on-code dcb 88)
+;; (score-byte-on-code dcb 88)
 
 
 

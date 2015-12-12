@@ -95,127 +95,122 @@
 
 ;;;  Letter  Frequency
 
-(def letter-frequencies
-  {\E 0.1202, \T 0.910, \A 0.812, \O 0.768, \I 0.731, \N 0.695,
-   \S 0.628, \R 0.602, \H 0.592, \D 0.432, \L 0.398, \U 0.288, \C 0.271,
-   \M 0.261, \F 0.230, \Y 0.211, \W 0.209, \G 0.203, \P 0.182, \B 0.149,
-   \V 0.111, \K 0.069, \X 0.017, \Q 0.011, \J 0.010, \Z 0.007 })
+(defn- scale-to-frequency
+  [x s]
+  (->>
+   x
+   bigdec
+   (* s)
+   math/round
+   int))
 
-(defn is-whitespace?
+(def filename "./src/clojure_crypto_challenge/letters.csv")
+
+(defn- clean-space [s] (if (= s "SPACE") " " s))
+
+
+(defn- load-reference-lists
+  [fname]
+  (let [fl (slurp fname)
+        digits (map bigdec (re-seq #"0\.[0-9]+" fl))
+        ;; all-digits (into digits digits)
+        ;; lower-letters (map clean-space (re-seq #"[a-z]|SPACE" fl))
+        lower-letters (map #(apply short (clean-space %)) (re-seq #"[a-z]|SPACE" fl))
+        ;; upper-letters (map string/upper-case lower-letters)
+        ;; all-letters (into lower-letters upper-letters)
+        ;; all-bytes (map #(apply byte %) all-letters)
+        ]
+    ;; (vector all-bytes all-digits))
+    (vector  lower-letters digits)))
+
+(def llist (load-reference-lists filename))
+
+
+(defn- int-multiply
+  [s v]
+  (int (math/round (* s v))))
+
+(defn- map-reference-lists
+  [vs s]
+  (zipmap (vs 0) (map #(int-multiply s %) (vs 1))))
+
+(def memo-map-reference-lists
+  (memoize map-reference-lists))
+
+(def fixed-letter-map (memo-map-reference-lists llist 34))
+
+
+(defn- is-whitespace?
   [c]
   (Character/isWhitespace c))
 
 (defn to-upper-case
   [c]
-  (Character/toUpperCase c))
+  (Character/toUpperCase (char c)))
+
+(defn to-lower-digit
+  [x]
+  (bit-or (short x) 0x20))
 
 
-(defn is-iso-control?
+(defn- is-iso-control?
   [c]
   (Character/isISOControl c))
 
-(defn is-not-iso-control?
+(defn- is-not-iso-control?
   [c]
   (not (is-iso-control? c)))
 
+(defn chi-distance [x y]
+  (let [nay (or (nil? y) (= y 0))]
+    (if nay (math/expt x 2) (/ (math/expt (- x y) 2) y))))
 
-(def sanitise-char-array-xf
-  (comp
-   (remove is-whitespace?)
-   (map to-upper-case)
-   (map char)))
-
-(defn frequencies-upper-case-insensitive
-  [l]
-  (frequencies (sequence sanitise-char-array-xf l)))
-
-
-(defn relative-distributions
-  [value-map]
-  (let
-      [total (reduce + (vals value-map))
-       f (fn [k v] [k (/ v total)])]
-    (into {} (map f (keys value-map) (vals value-map)))))
-
-(defn compare-scores
-  [x y]
-  (/ (inc x) (inc y)))
-
-(defn seq-average
-  [s]
-  (let [t (reduce + s)
-        c (count s)]
-    (if (not= 0 c) (/ t c)
-        0)))
-
-(defn single-Byte-fixed-XOR
-  [char-arr b]
-  (let [byte-arr (repeat (count char-arr) b)]
-    (fixed-XOR byte-arr char-arr)))
+(defn score-line-as-english
+  [c]
+  (let [lm (memo-map-reference-lists llist (count c))]
+    (->>
+     c
+     (map to-lower-digit)
+     frequencies
+     (merge-with chi-distance lm)
+     vals
+     (reduce +)
+     )))
 
 (defn score-byte-on-code
   [c b]
   (let [s (repeat b)]
     (->>
      c
+     (map short)
      (fixed-XOR s)
-     (frequencies-upper-case-insensitive)
-     (relative-distributions)
-     (merge-with compare-scores letter-frequencies)
-     (vals)
-     (seq-average)
+     score-line-as-english
      )))
 
-(def all-bytes (range 0x0100))
+(def all-bytes (range 255))
 
 (defn get-XOR-score-table
   [s]
   (for [x all-bytes]
     [x (score-byte-on-code s x)]))
 
-(defn inverse [n] (/ 1 n))
-
-(defn nth-inverse
-  [n tupple]
-  (inverse (nth tupple n)))
-
-(defn get-max-tupple
-  [n l]
-  (let [sfn (fn [x] (nth-inverse n x))]
-    (->>
-     l
-     (sort-by sfn)
-     first)))
-
-;; Old version
-(defn get-XOR-score-best-match
-  [s]
-  (get-max-tupple 1 (get-XOR-score-table s)))
-
-(defn get-XOR-score-best-match
-  [s]
-  (min-tupple 1 (get-XOR-score-table s)))
-
-
-;; Old version
-(defn find-decode-byte
-  [s]
-  (first (get-XOR-score-best-match s)))
-
-;; Redefine find decode byte function
-;; (this is because the detection is now using minimum)
 (defn min-tupple
   [i v]
   (apply min-key #(nth % i) v))
 
+(defn get-XOR-score-best-match
+  [s]
+  (->>
+   s
+   get-XOR-score-table
+   (min-tupple 1)))
 
 (defn find-decode-byte
   [x]
-  (first (min-tupple 1 (get-XOR-score-table x))))
+  (first (get-XOR-score-best-match x)))
 
 
 ;;; Set 1 Challenge 4
-
 
 (defn detect-single-character-XOR-in-file
   [f]
@@ -224,16 +219,14 @@
    (map  decode-base16)
    (pmap get-XOR-score-best-match)
    (map cons (range))
-   ;; (get-max-tupple 2)
    (min-tupple 2)
    ))
-
 
 ;;; Set 1 Challenge 5
 
 (defn create-repeating-key
   [s]
-  (flatten (repeat (map byte s))))
+  (flatten (repeat (map short s))))
 
 (defn pattern-XOR-encode
   ([code-string code-key]
@@ -251,6 +244,7 @@
   (Integer/bitCount x))
 
 (defn get-hamming-distance
+  "Get hamming distance of two lists"
   [x y]
   (->>
    (fixed-XOR x y)
@@ -259,129 +253,35 @@
 
 (defn get-keysize-edit-distance
   "get the mean keysize distance of k in the sequence
-  of bytes ar. Returns a number"
-  [ar k]
-  (let [x (take k ar)
-        y (take k (drop k ar))]
-    (/ (get-hamming-distance x y) k)))
+  of bytes ar. Do this n times. Returns a number"
+  [ar k n]
+  (let [s (partition k ar)
+        t (rest s)
+        g (take n s)
+        h (take n t)]
+    (apply min (map #(/ % k) (map get-hamming-distance g h)))))
 
 (defn get-keysizes
   ([code-phrase] (get-keysizes code-phrase 4))
   ([code-phrase n] (get-keysizes code-phrase n 2 41))
   ([code-phrase n start end]
-   (map first
-        (take n
-              (sort-by #(second %)
+   (take n
+         (map first
+              (sort-by second
                        (for [i (range start end)]
-                         [i (get-keysize-edit-distance code-phrase i)]))))))
+                         [i (get-keysize-edit-distance code-phrase i 4)]))))))
 
 (defn block-sequence
   [source block-width]
   (for [k (range block-width)]
     (take-nth block-width (drop k source))))
 
+(defn bytes-to-string
+  [x]
+  (apply str (map char x)))
 
 (defn break-repeat-XOR-cypher
   "Return the key used to XOR the code-phrase. Code
   phrase is a seq bytes. Returns a seq bytes"
   [code-phrase]
   (map find-decode-byte (first (map #(block-sequence code-phrase %) (get-keysizes code-phrase)))))
-
-
-
-;; ------------
-
-(def in [1 2 2 1 3 3 1 4 5])
-
-(def rel {1 1/3, 2 2/3})
-
-(def ot {:freq {1 3, 2 2, 3 2, 4 1, 5 1} })
-
-
-(reduce (fn [x y] (if (< y 6) (conj x y) (reduced nil))) [] in)
-
-
-
-;; Little byte array tests and exmples... will this be quicker??
-(def dx (bytes (byte-array (map (comp byte int) "ascii"))))
-
-(def bs (byte-array 10))
-(vec bs)
-(aset-byte bs 2 127)
-
-(def d2 [1 2 3 4 4 2 1])
-(def xf (map identity))
-(transduce xf + d2)
-
-(type (bit-and (byte 127) 1))
-(type (byte 127))
-(bit-flip (byte 127) 1)
-
-(eduction xf d2)
-(sequence xf d2)
-
-
-(defn do-to [m f]
-  (reduce #(assoc %1 %2 (f (m %2))) {} (keys m)))
-
-
-
-(def scaled-letter-frequencies (do-to letter-frequencies #(math/round (* 34 %))))
-
-(defn chi_distance [x y]
-  (let [nay (or (nil? y) (= y 0))]
-    (if nay (math/expt x 2) (/ (math/expt (- x y) 2) y))))
-
-(defn chi_distance [x y]
-  (/ (math/expt (- y x) 2) x))          ;not working!!
-
-
-(def lfs (slurp "./r/letters.txt"))
-
-
-(defn score-byte-on-code
-  [c b]
-  (let [s (repeat b)]
-    (->>
-     c
-     (fixed-XOR s)
-     frequencies
-     ;; (relative-distributions)
-     (merge-with chi_distance fixed-letter-map)
-     (vals)
-     (reduce +)
-     )))
-
-
-(min-key #(% 0) [[1 3] [2 3] [0 4]])
-
-(sort-by #(% 0) [[1 3] [2 3] [0 4]])
-
-
-;; Load letters to map from file
-(def str-pairs (map #(string/split % #", ") str-seqs))
-(def str-pairs-conf (filter #(== 2 (count %)) str-pairs))
-(def clean-str-pairs (map #(vector (% 0) (int (math/round (* 34 (bigdec (% 1)))))) (drop 1 str-pairs-conf)))
-
-
-
-(defn clean-space [s] (if (= s "SPACE") " " s))
-(defn clean-space-v [v] (vector (clean-space (v 0)) (v 1)))
-
-(defn convert-byte [c] (apply byte c))
-(defn convert-byte-v [v] (vector (convert-byte (v 0)) (v 1)))
-
-(defn make-upper-case [v] (vector (string/upper-case (v 0)) (v 1)))
-(defn duplicate-upper-case [v] (vector v (make-upper-case v)))
-
-
-(def fixed-letter-map
-  (->>
-   clean-str-pairs
-   (map clean-space-v)
-   (map duplicate-upper-case)
-   (reduce #(into %1 %2) [])
-   (map convert-byte-v)
-   sort
-   (drop 1)
-   (into {})))

@@ -368,4 +368,33 @@ Evaluation count : 90 in 6 samples of 15 calls.
     + Need to be careful with state of code. Have broken quite a few
       things. But, on the plus side I think I've sped it up an order
       of magnitude - at least.
-    +
+*** <2015-12-09 Wed>
+    + Checked in, and now cleaning up the code. There was a lot of
+      extra stuff in there. Also, my tests were closely coupled to the
+      workings of my code - not the externals "API". Need to watch
+      this in the future. - I've broken something on the
+      find-decode-byte code.
+    + Found issue. It was silly mistake. Had new line characters \r\n
+      wrong way around. Easy way to remember is that n does nothing
+      na( \r\na)
+*** <2015-12-10 Thu>
+    + Cleaning code a bit more. Have cleaned the letter frequency
+      stuff. It is now two sequences. One bytes. Ones relatives. I
+      then have function that will multiply the numbers and zip the
+      two. This should be faster.
+    + I've run the Challenge 6 manually. I found the decode bytes, but
+      not the correct length (automatically, i found it by eye -
+      around 38B I think). My problem is in the hamming distance
+      average function. Not dealing with seq of seq properly. I'm sure
+      I've made this more complex than need.
+    + Wondering if I can use matrix operations to do the hamming
+      distance work. It feels like it could fit...
+*** <2015-12-11 Fri>
+    + Did some minor work looking at challenge 6. This is still the focus.
+*** <2015-12-12 Sat>
+    + Break apart the Key finding sequence, and block sequence. They
+      need work.
+    + Have successfully decoded the challenge, but... I'm not scoring
+      the correct prase as the best english. Not sure why. The invalid
+      keys are giving 8080, while the valid one is a lot
+      larger. Suspect the error is in the scoring function, but where.
