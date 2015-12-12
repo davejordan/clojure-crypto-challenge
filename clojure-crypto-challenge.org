@@ -397,4 +397,11 @@ Evaluation count : 90 in 6 samples of 15 calls.
     + Have successfully decoded the challenge, but... I'm not scoring
       the correct prase as the best english. Not sure why. The invalid
       keys are giving 8080, while the valid one is a lot
-      larger. Suspect the error is in the scoring function, but where.
+      larger. Suspect the error is in the scoring function, but where...
+    + Found the error in my scoring function. It was because I'd
+      introduced a function to convrt chars to lower case. I just OR'd
+      the byte with 0x20. However, this made 0x00 == 0x20 which
+      wrongly scored some text. Need to go back an rework this
+      function so that below 0x20 is not upgraded to display/normal
+      characters.
+**** Tried using GIT on emacs - magit-status                       :WORKFLOW:

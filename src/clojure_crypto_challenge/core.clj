@@ -140,26 +140,31 @@
 (def fixed-letter-map (memo-map-reference-lists llist 34))
 
 
-(defn- is-whitespace?
-  [c]
-  (Character/isWhitespace c))
+;; (defn- is-whitespace?
+;;   [c]
+;;   (Character/isWhitespace c))
 
-(defn to-upper-case
-  [c]
-  (Character/toUpperCase (char c)))
+;; (defn to-upper-case
+;;   [c]
+;;   (Character/toUpperCase (char c)))
+
+
+;; (defn- is-iso-control?
+;;   [c]
+;;   (Character/isISOControl c))
+
+;; (defn- is-not-iso-control?
+;;   [c]
+;;   (not (is-iso-control? c)))
 
 (defn to-lower-digit
   [x]
-  (bit-or (short x) 0x20))
-
-
-(defn- is-iso-control?
-  [c]
-  (Character/isISOControl c))
-
-(defn- is-not-iso-control?
-  [c]
-  (not (is-iso-control? c)))
+  (let [y (short x)]
+    (->
+     y
+     (bit-shift-right 1)
+     (bit-and 0x20)
+     (bit-or y))))
 
 (defn chi-distance [x y]
   (let [nay (or (nil? y) (= y 0))]
@@ -177,12 +182,12 @@
      (reduce +)
      )))
 
+
 (defn score-byte-on-code
   [c b]
   (let [s (repeat b)]
     (->>
      c
-     (map short)
      (fixed-XOR s)
      score-line-as-english
      )))
@@ -280,8 +285,21 @@
   [x]
   (apply str (map char x)))
 
+
+
 (defn break-repeat-XOR-cypher
-  "Return the key used to XOR the code-phrase. Code
-  phrase is a seq bytes. Returns a seq bytes"
   [code-phrase]
-  (map find-decode-byte (first (map #(block-sequence code-phrase %) (get-keysizes code-phrase)))))
+
+  (->>
+   code-phrase
+   get-keysizes
+   (map #(block-sequence code-phrase %))
+   (map #(map find-decode-byte %))
+   (map #(fixed-XOR code-phrase (create-repeating-key %)))
+   (map score-line-as-english)
+   (zipmap (get-keysizes code-phrase))
+   (apply min-key #(val %))
+   first
+   (block-sequence code-phrase)
+   (map find-decode-byte)
+   ))
