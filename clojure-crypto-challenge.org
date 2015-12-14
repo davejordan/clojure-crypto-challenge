@@ -38,7 +38,6 @@
     I've used a Java string conversion routine for hex conversion. I
     got set 1 test to pass!
 
-
 ** Fixed XOR
 ***   2015-11-04
       Started and finished. Just needed to add a formatting encode-base16 as
@@ -404,4 +403,126 @@ Evaluation count : 90 in 6 samples of 15 calls.
       wrongly scored some text. Need to go back an rework this
       function so that below 0x20 is not upgraded to display/normal
       characters.
+    + Have finished Challenge 6. It is mess, and nasty, but
+      done. Definately needs some refactoring.
 **** Tried using GIT on emacs - magit-status                       :WORKFLOW:
+     M-x magit-status to see git status, and in the status buffer:
+     s to stage files
+     c c to commit (type the message then C-c C-c to actually commit)
+     b b to switch to another branch
+
+     Other handy keys:
+
+     P P to do a git push
+     F F to do a git pull
+     try to press TAB
+*** <2015-12-13 Sun>
+    + Grayson to hospital :(
+    +
+** AES in ECB Mode
+*** <2015-12-14 Mon>
+    + Have been struggling with OpenSSL or a bit. In the end I think
+      the problem is due to character encoding of password. The file
+      was encrypted using ASCII, but windows is converting my password
+      text to unicode. This is a guess, but I kind of proove it with
+      the following tests on command line:
+      - I can encrypt and decrypt:
+    #+begin_src
+openssl enc -e -base64 -aes-128-ecb -in text.txt -k "PASS" -out test.enc
+openssl enc -d -base64 -aes-128-ecb -in test.enc -k "PASS"
+    #+end_src
+      - I can decrypt the challenge 7.txt file as follows (note: the
+        hex is the ascii code for "YELLOW SUBMARINE". Also K denotes
+        pass phrase in Hex.
+      #+begin_src
+openssl enc -d -base64 -aes-128-ecb -in 7.txt -K 59454c4c4f57205355424d4152494eq45
+      #+end_src
+    + The output of 7.txt is the lyrics for Funky Music... just so I know.
+    + First part of challenge is playing with and understanding Java
+      Cryptography Architecture (JCA)
+**** JCA
+     + http://docs.oracle.com/javase/7/docs/technotes/guides/security/crypto/CryptoSpec.html
+     + In java-clojure this was quite painless. A bit of back and
+       forth between byte arrays, but quite easy.
+     #+begin_src clojure
+(import javax.crypto.Cipher javax.crypto.spec.SecretKeySpec)
+
+(def k (into-array Byte/TYPE (map byte "YELLOW SUBMARINE"))) ;corce to byte
+(def code-key (SecretKeySpec. k "AES")) ; generate code key (algorithm AES)
+(def cipher (Cipher/getInstance "AES/ECB/NoPadding")) ; create AES cipher
+(.init cipher Cipher/DECRYPT_MODE code-key) ; initalise cipher to decrypt
+;; Decode from base64 the 7.txt and put in code-text
+(def ct (into-array Byte/TYPE code-text)) ; coerce to to byte
+(def plain-text (.doFinal c cd)) ; plain text as byte-array
+(apply str  (map char plain-text)) ; coerce to string
+     #+end_src
+     + Next step is convert to clojure idiom... but first cleanup..
+     + I've benchmarked my to-lower-digit vs java character
+       convert. Mine is clear winer... (by 3 orders magnitude)
+     #+name: my version of to-lower-digit
+     #+begin_src clojure
+(defn to-lower-digit
+  [x]
+  (let [y (short x)]
+    (->
+     y
+     (bit-shift-right 1)
+     (bit-and 0x20)
+     (bit-or y))))
+     #+end_src
+     + Then the two tests, and their outputs.
+     #+name: performance tests
+     #+begin_src clojure
+(crit/quick-bench (short (Character/toUpperCase (char 120))))
+;WARNING: Final GC required 62.247873120205156 % of runtime
+;Evaluation count : 72084 in 6 samples of 12014 calls.
+;             Execution time mean : 10.439937 탎
+;    Execution time std-deviation : 2.022481 탎
+;   Execution time lower quantile : 8.252479 탎 ( 2.5%)
+;   Execution time upper quantile : 12.874142 탎 (97.5%)
+;                   Overhead used : 1.495886 ns
+
+(crit/quick-bench (to-lower-digit 120))
+
+;WARNING: Final GC required 72.32337594762932 % of runtime
+;Evaluation count : 29719944 in 6 samples of 4953324 calls.
+;             Execution time mean : 18.815455 ns
+;    Execution time std-deviation : 0.185421 ns
+;   Execution time lower quantile : 18.590476 ns ( 2.5%)
+;   Execution time upper quantile : 19.036307 ns (97.5%)
+;                   Overhead used : 1.495886 ns
+
+;Found 1 outliers in 6 samples (16.6667 %)
+;        low-severe       1 (16.6667 %)
+; Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
+     #+end_src
+     + compare (* x x) to (math/expt x 2)... 100 times faster using *
+     #+begin_src clojure
+clojure-crypto-challenge.core> (quick-bench (* 112 112))
+WARNING: Final GC required 72.27999511929572 % of runtime
+Evaluation count : 70409478 in 6 samples of 11734913 calls.
+             Execution time mean : 9.917522 ns
+    Execution time std-deviation : 0.293207 ns
+   Execution time lower quantile : 9.680164 ns ( 2.5%)
+   Execution time upper quantile : 10.380881 ns (97.5%)
+                   Overhead used : 1.495886 ns
+
+Found 1 outliers in 6 samples (16.6667 %)
+        low-severe       1 (16.6667 %)
+ Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
+nil
+
+clojure-crypto-challenge.core> (quick-bench (math/expt 112 2))
+WARNING: Final GC required 59.721369753609075 % of runtime
+Evaluation count : 6303684 in 6 samples of 1050614 calls.
+             Execution time mean : 98.752183 ns
+    Execution time std-deviation : 9.690157 ns
+   Execution time lower quantile : 93.622400 ns ( 2.5%)
+   Execution time upper quantile : 115.228119 ns (97.5%)
+                   Overhead used : 1.495886 ns
+
+Found 1 outliers in 6 samples (16.6667 %)
+        low-severe       1 (16.6667 %)
+ Variance from outliers : 30.3282 % Variance is moderately inflated by outliers
+clojure-crypto-challenge.core>
+     #+end_src

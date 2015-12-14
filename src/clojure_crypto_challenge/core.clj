@@ -3,7 +3,9 @@
             [clojure.math.numeric-tower :as math]
             [clojure.string :as string])
   (:import  java.util.Base64
-            java.nio.charset.StandardCharsets))
+            java.nio.charset.StandardCharsets
+            javax.crypto.Cipher
+            javax.crypto.spec.SecretKeySpec))
 
 
 ;; Set 1 Challenge 1 - Re-encode base16 to base64
@@ -108,20 +110,13 @@
 
 (defn- clean-space [s] (if (= s "SPACE") " " s))
 
-
 (defn- load-reference-lists
   [fname]
   (let [fl (slurp fname)
         digits (map bigdec (re-seq #"0\.[0-9]+" fl))
-        ;; all-digits (into digits digits)
-        ;; lower-letters (map clean-space (re-seq #"[a-z]|SPACE" fl))
-        lower-letters (map #(apply short (clean-space %)) (re-seq #"[a-z]|SPACE" fl))
-        ;; upper-letters (map string/upper-case lower-letters)
-        ;; all-letters (into lower-letters upper-letters)
-        ;; all-bytes (map #(apply byte %) all-letters)
+        letters (map #(apply short (clean-space %)) (re-seq #"[a-z]|SPACE" fl))
         ]
-    ;; (vector all-bytes all-digits))
-    (vector  lower-letters digits)))
+    (vector letters digits)))
 
 (def llist (load-reference-lists filename))
 
@@ -139,24 +134,6 @@
 
 (def fixed-letter-map (memo-map-reference-lists llist 34))
 
-
-;; (defn- is-whitespace?
-;;   [c]
-;;   (Character/isWhitespace c))
-
-;; (defn to-upper-case
-;;   [c]
-;;   (Character/toUpperCase (char c)))
-
-
-;; (defn- is-iso-control?
-;;   [c]
-;;   (Character/isISOControl c))
-
-;; (defn- is-not-iso-control?
-;;   [c]
-;;   (not (is-iso-control? c)))
-
 (defn to-lower-digit
   [x]
   (let [y (short x)]
@@ -166,13 +143,34 @@
      (bit-and 0x20)
      (bit-or y))))
 
+(defn to-ascii-letter
+  [y]
+  (let [x (short y)]
+    (if (and (> x 0x1F) (< x 0x80))
+      (bit-or x 0x20)
+      0x00)))
+
+
+
 (defn chi-distance [x y]
   (let [nay (or (nil? y) (= y 0))]
     (if nay (math/expt x 2) (/ (math/expt (- x y) 2) y))))
 
+(defn chi-distance [x y]
+  (let [nay (or (nil? y) (= y 0))]
+    (if nay (* x x) (/ (* (- x y) (- x y)) y))))
+
+(defn chi-distance [x y]
+  (let [nay (or (nil? y) (= y 0))]
+    (if nay (* x x) (+ (- (/ (* x x) y) (* x 2)) y))))
+
+
+(def line-sample 30)
+
 (defn score-line-as-english
-  [c]
-  (let [lm (memo-map-reference-lists llist (count c))]
+  [x]
+  (let [c (take line-sample x)
+        lm (memo-map-reference-lists llist (count c))]
     (->>
      c
      (map to-lower-digit)
@@ -303,3 +301,26 @@
    (block-sequence code-phrase)
    (map find-decode-byte)
    ))
+
+;;; Set 1 Challenge 7 AES-128-ECB cyper
+
+;; Testing with JAVA Crypto
+(def k (into-array Byte/TYPE (map byte "YELLOW SUBMARINE")))
+
+(def ky (SecretKeySpec. k "AES"))
+
+(def c (Cipher/getInstance "AES/ECB/NoPadding"))
+
+(.init c Cipher/DECRYPT_MODE ky)
+
+(def test-file-challenge-7 (slurp "test/clojure_crypto_challenge/7.txt"))
+
+(def test-file-challenge-7a (line-seq (io/reader "test/clojure_crypto_challenge/7.txt")))
+
+(def test-file-challenge-7b (decode-base64 test-file-challenge-7a))
+
+(def cd (into-array Byte/TYPE test-file-challenge-7b))
+
+(def ot (.doFinal c cd))
+
+(apply str  (map char ot))

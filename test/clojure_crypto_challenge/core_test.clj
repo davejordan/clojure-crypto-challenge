@@ -171,6 +171,38 @@
 
 
 
+(def klist (memo-map-reference-lists llist 30))
+
+(defn score-line-as-english2
+  [x]
+  (let [c (take line-sample x)
+        lm klist]
+    (->>
+     c
+     (map to-ascii-letter)
+     frequencies
+     (merge-with chi-distance lm)
+     )))
+
+;; (crit/quick-bench (score-line-as-english2 "this is a quite long piece of text over 30 chars"))
+
+
+;; (crit/quick-bench (bytes-to-string (break-repeat-XOR-cypher test-file-challenge-6b)))
+
+
+;; Set 1 Challenge 7
+
+;; (def test-file-challenge-7 (slurp "test/clojure_crypto_challenge/7.txt"))
+
+;; (def test-file-challenge-7a (line-seq (io/reader "test/clojure_crypto_challenge/7.txt")))
+
+;; (def test-file-challenge-7b (decode-base64 test-file-challenge-7a))
+
+
+;; (crit/quick-bench (chi-distance 100 nil))
+
+
+
 ;;; Extract for anlaysis in R - dumping to file-----------
 
 
