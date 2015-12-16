@@ -173,18 +173,42 @@
 
 (def klist (memo-map-reference-lists llist 30))
 
+(defn to-ascii-letter-2
+  [x]
+  (if (and (> x 0x1F) (< x 0x80))
+    (bit-or x 0x20)
+    0x00))
+
 (defn score-line-as-english2
   [x]
   (let [c (take line-sample x)
         lm klist]
     (->>
      c
-     (map to-ascii-letter)
-     frequencies
-     (merge-with chi-distance lm)
+     (map to-ascii-letter-2)
+     ;; frequencies
+     ;; (merge-with chi-distance lm)
      )))
 
-;; (crit/quick-bench (score-line-as-english2 "this is a quite long piece of text over 30 chars"))
+(defn score-line-as-english3
+  [x]
+  (let [c (.getBytes (apply str (take line-sample x)))]
+    ;; (for [i (range (count btext))]
+    ;; (aset-byte ^bytes btext i (to-ascii-letter-2 (aget ^bytes btext i))))
+    ;; frequencies
+    ;; (merge-with chi-distance lm)
+    ))
+
+(def ttext (str "THIS is a quite LONG LONG Thing & I like." (char 212)))
+(def tchar (.getBytes (apply str (take line-sample ttext))))
+(def btext (int-array (.getBytes (apply str (take 100 ttext)))))
+
+(crit/quick-bench (score-line-as-english3 ttext))
+
+(crit/quick-bench (score-line-as-english2 btext))
+
+
+
 
 
 ;; (crit/quick-bench (bytes-to-string (break-repeat-XOR-cypher test-file-challenge-6b)))

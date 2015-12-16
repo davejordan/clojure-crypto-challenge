@@ -120,6 +120,8 @@
 
 (def llist (load-reference-lists filename))
 
+;;; NASTYNESS TO REMOVE!!
+;; (def full-array (byte-array 256))
 
 (defn- int-multiply
   [s v]
@@ -156,16 +158,16 @@
   (let [nay (or (nil? y) (= y 0))]
     (if nay (math/expt x 2) (/ (math/expt (- x y) 2) y))))
 
-(defn chi-distance [x y]
-  (let [nay (or (nil? y) (= y 0))]
-    (if nay (* x x) (/ (* (- x y) (- x y)) y))))
+;; (defn chi-distance [x y]
+;;   (let [nay (or (nil? y) (= y 0))]
+;;     (if nay (* x x) (/ (* (- x y) (- x y)) y))))
 
-(defn chi-distance [x y]
-  (let [nay (or (nil? y) (= y 0))]
-    (if nay (* x x) (+ (- (/ (* x x) y) (* x 2)) y))))
+;; (defn chi-distance [x
+;;   (let [nay (or (nil? y) (= y 0))]
+;;     (if nay (* x x) (+ (- (/ (* x x) y) (* x 2)) y))))
 
 
-(def line-sample 30)
+(def line-sample 25)
 
 (defn score-line-as-english
   [x]
@@ -173,7 +175,8 @@
         lm (memo-map-reference-lists llist (count c))]
     (->>
      c
-     (map to-lower-digit)
+     ;; (map to-lower-digit)
+     (map to-ascii-letter)
      frequencies
      (merge-with chi-distance lm)
      vals

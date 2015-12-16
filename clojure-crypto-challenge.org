@@ -483,7 +483,6 @@ openssl enc -d -base64 -aes-128-ecb -in 7.txt -K 59454c4c4f57205355424d4152494eq
 ;                   Overhead used : 1.495886 ns
 
 (crit/quick-bench (to-lower-digit 120))
-
 ;WARNING: Final GC required 72.32337594762932 % of runtime
 ;Evaluation count : 29719944 in 6 samples of 4953324 calls.
 ;             Execution time mean : 18.815455 ns
@@ -499,30 +498,51 @@ openssl enc -d -base64 -aes-128-ecb -in 7.txt -K 59454c4c4f57205355424d4152494eq
      + compare (* x x) to (math/expt x 2)... 100 times faster using *
      #+begin_src clojure
 clojure-crypto-challenge.core> (quick-bench (* 112 112))
-WARNING: Final GC required 72.27999511929572 % of runtime
-Evaluation count : 70409478 in 6 samples of 11734913 calls.
-             Execution time mean : 9.917522 ns
-    Execution time std-deviation : 0.293207 ns
-   Execution time lower quantile : 9.680164 ns ( 2.5%)
-   Execution time upper quantile : 10.380881 ns (97.5%)
-                   Overhead used : 1.495886 ns
+;WARNING: Final GC required 72.27999511929572 % of runtime
+;Evaluation count : 70409478 in 6 samples of 11734913 calls.
+;             Execution time mean : 9.917522 ns
+;    Execution time std-deviation : 0.293207 ns
+;   Execution time lower quantile : 9.680164 ns ( 2.5%)
+;   Execution time upper quantile : 10.380881 ns (97.5%)
+;                   Overhead used : 1.495886 ns
 
-Found 1 outliers in 6 samples (16.6667 %)
-        low-severe       1 (16.6667 %)
- Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
-nil
+;Found 1 outliers in 6 samples (16.6667 %)
+;        low-severe       1 (16.6667 %)
+; Variance from outliers : 13.8889 % Variance is moderately inflated by outliers
 
 clojure-crypto-challenge.core> (quick-bench (math/expt 112 2))
-WARNING: Final GC required 59.721369753609075 % of runtime
-Evaluation count : 6303684 in 6 samples of 1050614 calls.
-             Execution time mean : 98.752183 ns
-    Execution time std-deviation : 9.690157 ns
-   Execution time lower quantile : 93.622400 ns ( 2.5%)
-   Execution time upper quantile : 115.228119 ns (97.5%)
-                   Overhead used : 1.495886 ns
+;WARNING: Final GC required 59.721369753609075 % of runtime
+;Evaluation count : 6303684 in 6 samples of 1050614 calls.
+;             Execution time mean : 98.752183 ns
+;    Execution time std-deviation : 9.690157 ns
+;   Execution time lower quantile : 93.622400 ns ( 2.5%)
+;   Execution time upper quantile : 115.228119 ns (97.5%)
+;                   Overhead used : 1.495886 ns
 
-Found 1 outliers in 6 samples (16.6667 %)
-        low-severe       1 (16.6667 %)
- Variance from outliers : 30.3282 % Variance is moderately inflated by outliers
-clojure-crypto-challenge.core>
+;Found 1 outliers in 6 samples (16.6667 %)
+;        low-severe       1 (16.6667 %)
+; Variance from outliers : 30.3282 % Variance is moderately inflated by outliers
      #+end_src
+     + I've sped up the line decode by limiting it. However, have to
+       be careful. At the moment this is a static constant (say
+       30). But if this is less than the Block of the cypher, then the
+       scoring will not work. Can see effect of this by choosing
+       length 25 and applying to Challenge 7.
+*** <2015-12-15 Tue>
+    + Reading about using arrays with map and reduce. Think it might
+      be quicker for Score English task.
+*** <2015-12-16 Wed>
+    + Have created little array routine for frequency. Not benchmarked
+      it yet..
+    #+begin_src clojure
+(def a (.getBytes "AAABXxlllyz")) ;Test string
+(def cc (int-array 128 0)); frequency array
+
+(dotimes [i (alength ^bytes a)]
+(aset-int
+  ^ints cc
+  (aget ^bytes a i)
+  (unchecked-inc (aget ^ints cc (aget ^bytes a i)))))
+
+(println (apply str cc))
+    #+end_src
