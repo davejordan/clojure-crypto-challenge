@@ -158,7 +158,6 @@
       1 "oonn" 2 2
       2 "ooll" 2 1)))
 
-(def test-file-challenge-6 (slurp "test/clojure_crypto_challenge/6.txt"))
 
 (def test-file-challenge-6a (line-seq (io/reader "test/clojure_crypto_challenge/6.txt")))
 
@@ -169,96 +168,18 @@
     (is (= "Terminator X: Bring the noise"
            (bytes-to-string (break-repeat-XOR-cypher test-file-challenge-6b))))))
 
+;;; Set 1 Challenge 7
 
 
-(def klist (memo-map-reference-lists llist 30))
+(def test-file-challenge-7a (line-seq (io/reader "test/clojure_crypto_challenge/7.txt")))
 
-(defn to-ascii-letter-2
-  [x]
-  (if (and (> x 0x1F) (< x 0x80))
-    (bit-or x 0x20)
-    0x00))
+(def test-file-challenge-7b (decode-base64 test-file-challenge-7a))
 
-(defn score-line-as-english2
-  [x]
-  (let [c (take line-sample x)
-        lm klist]
-    (->>
-     c
-     (map to-ascii-letter-2)
-     ;; frequencies
-     ;; (merge-with chi-distance lm)
-     )))
+(def test-results-challenge-7 (slurp "test/clojure_crypto_challenge/7-results.txt"))
 
-(defn score-line-as-english3
-  [x]
-  (let [c (.getBytes (apply str (take line-sample x)))]
-    ;; (for [i (range (count btext))]
-    ;; (aset-byte ^bytes btext i (to-ascii-letter-2 (aget ^bytes btext i))))
-    ;; frequencies
-    ;; (merge-with chi-distance lm)
-    ))
-
-(def ttext (str "THIS is a quite LONG LONG Thing & I like." (char 212)))
-(def tchar (.getBytes (apply str (take line-sample ttext))))
-(def btext (int-array (.getBytes (apply str (take 100 ttext)))))
-
-(crit/quick-bench (score-line-as-english3 ttext))
-
-(crit/quick-bench (score-line-as-english2 btext))
-
-
-
-
-
-;; (crit/quick-bench (bytes-to-string (break-repeat-XOR-cypher test-file-challenge-6b)))
-
-
-;; Set 1 Challenge 7
-
-;; (def test-file-challenge-7 (slurp "test/clojure_crypto_challenge/7.txt"))
-
-;; (def test-file-challenge-7a (line-seq (io/reader "test/clojure_crypto_challenge/7.txt")))
-
-;; (def test-file-challenge-7b (decode-base64 test-file-challenge-7a))
-
-
-;; (crit/quick-bench (chi-distance 100 nil))
-
-
-
-;;; Extract for anlaysis in R - dumping to file-----------
-
-
-;; (defn test-table [s]
-;;   (for [i all-bytes]
-;;     (fixed-XOR (repeat i) s)))
-
-
-;; (defn pp [] (test-table (decode-base16 single-byte-xor-cipher-code)))
-
-
-;; (with-open [w (clojure.java.io/writer  "r/dump.txt")]
-;;   (doseq [k (pp)]
-;;     (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
-
-
-;; Benchmarks-------
-;; (crit/quick-bench (def dcb (decode-base16 single-byte-xor-cipher-code)))
-;; (crit/quick-bench (find-decode-byte dcb))
-;; (crit/bench (score-byte-on-code dcb 120))
-
-;; (find-decode-byte dcb)
-
-;; (score-byte-on-code dcb 88)
-
-
-
-;; (defn flk [] (slurp "test/clojure_crypto_challenge/4.txt"))
-
-;; (defn fl2 [] (string/split (flk) #"\n"))
-
-;; (with-open [w (clojure.java.io/writer  "r/dump.txt")]
-;; (doseq [s (fl2)
-;; k (test-table (decode-base16  s))]
-;; (.write w (str (apply str (interleave k (repeat ",")))  "\r\n"))))
+(deftest test-open-AES-128-ECB-cipher
+  (testing "can open cipher with known key and result"
+    (is (=
+         test-results-challenge-7
+         (bytes-to-string
+          (decipher-aes-128-ecb "YELLOW SUBMARINE" test-file-challenge-7b))))))

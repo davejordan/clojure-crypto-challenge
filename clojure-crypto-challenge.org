@@ -546,3 +546,37 @@ clojure-crypto-challenge.core> (quick-bench (math/expt 112 2))
 
 (println (apply str cc))
     #+end_src
+    + It looks like my changes are not reducing the running speed. I'm
+      a bit surprised. I thought working with raw arrays would have
+      sped things up, but it doesn't.... learning some lessons
+      here. That said, I have changed the chi-distance function as I
+      found a flaw in it. It is not used if one of the maps is missing
+      in the other map. This means values that are in the string, but
+      not in the frequency map, are not being penalised. Might need to
+      look into that.
+    + Also, an idea about performance. I may be able to reduce the
+      letter frequency map before I merge. It only makes sense to have
+      the same values as the source map when merging. Maybe a Hash-Map
+      would work better? Or an ordered map?
+*** <2015-12-17 Thu>
+    + Have spent a bit of time playing around with "transient"
+      "assoc!" and "persistent!". Trying to create a faster version of
+      merge-with. It hardly worked.
+    + I then tried memoizing "chi-distance". It got worse! I'm not
+      sure how that could happen. Maybe it is the cache load. The
+      actual chi calculation is quite small. Yet still, how is score
+      word still taking up to 20\mu s.
+*** <2015-12-18 Fri>
+    + Attempting to use visualvm.exe. It provides profiling and
+      monitoring capabilities for JVM. So far, having troubles with
+      it, and not getting much useful data out of it. Found an article
+      that might help:
+      http://torsten.io/stdout/how-to-profile-clojure-code/ have added
+      some items on JVM to [[file:project.clj][project.clj]].
+    + Note when running VirsualVM use the following: jvisualvm.exe
+      --console new. This opens a new console, rather than locking
+      source console.
+    + Have set JMX port as: 127.0.0.1:43210
+    + Added little code to limit printing in repl. Add following to
+      project.clj ":repl-options {:init (set! *print-length* 50)}"
+    + So far in my testing, minimum sample line length need is 28.

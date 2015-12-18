@@ -120,10 +120,18 @@
 
 (def llist (load-reference-lists filename))
 
+                                        ;
 ;;; NASTYNESS TO REMOVE!!
-;; (def full-array (byte-array 256))
+;; (def full-array (int-array 128))
+;; (dotimes [i (count (llist 0))]
+;;   (aset-byte full-array
+;;              (nth (llist 0) i)
+;;              (byte  (int-multiply 30 (nth (llist 1) i)))))
 
-(defn- int-multiply
+
+
+
+(defn int-multiply
   [s v]
   (int (math/round (* s v))))
 
@@ -136,15 +144,6 @@
 
 (def fixed-letter-map (memo-map-reference-lists llist 34))
 
-(defn to-lower-digit
-  [x]
-  (let [y (short x)]
-    (->
-     y
-     (bit-shift-right 1)
-     (bit-and 0x20)
-     (bit-or y))))
-
 (defn to-ascii-letter
   [y]
   (let [x (short y)]
@@ -153,21 +152,12 @@
       0x00)))
 
 
-
-(defn chi-distance [x y]
+(defn chi-distance [^double x ^double y]
   (let [nay (or (nil? y) (= y 0))]
-    (if nay (math/expt x 2) (/ (math/expt (- x y) 2) y))))
-
-;; (defn chi-distance [x y]
-;;   (let [nay (or (nil? y) (= y 0))]
-;;     (if nay (* x x) (/ (* (- x y) (- x y)) y))))
-
-;; (defn chi-distance [x
-;;   (let [nay (or (nil? y) (= y 0))]
-;;     (if nay (* x x) (+ (- (/ (* x x) y) (* x 2)) y))))
+    (if nay (math/expt x 2) (/ (math/expt (-  x y) 2) y))))
 
 
-(def line-sample 25)
+(def line-sample 28) ;number of chars to determine english
 
 (defn score-line-as-english
   [x]
@@ -175,7 +165,6 @@
         lm (memo-map-reference-lists llist (count c))]
     (->>
      c
-     ;; (map to-lower-digit)
      (map to-ascii-letter)
      frequencies
      (merge-with chi-distance lm)
@@ -287,10 +276,8 @@
   (apply str (map char x)))
 
 
-
 (defn break-repeat-XOR-cypher
   [code-phrase]
-
   (->>
    code-phrase
    get-keysizes
@@ -307,23 +294,10 @@
 
 ;;; Set 1 Challenge 7 AES-128-ECB cyper
 
-;; Testing with JAVA Crypto
-(def k (into-array Byte/TYPE (map byte "YELLOW SUBMARINE")))
-
-(def ky (SecretKeySpec. k "AES"))
-
-(def c (Cipher/getInstance "AES/ECB/NoPadding"))
-
-(.init c Cipher/DECRYPT_MODE ky)
-
-(def test-file-challenge-7 (slurp "test/clojure_crypto_challenge/7.txt"))
-
-(def test-file-challenge-7a (line-seq (io/reader "test/clojure_crypto_challenge/7.txt")))
-
-(def test-file-challenge-7b (decode-base64 test-file-challenge-7a))
-
-(def cd (into-array Byte/TYPE test-file-challenge-7b))
-
-(def ot (.doFinal c cd))
-
-(apply str  (map char ot))
+(defn decipher-aes-128-ecb
+  "two strings, ky is key string, ct is cipher text. returns byte-array"
+  [ky ct]
+  (let [k (SecretKeySpec. (.getBytes ky) "AES")
+        cipher (Cipher/getInstance "AES/ECB/NoPadding")]
+    (.init cipher Cipher/DECRYPT_MODE k)
+    (.doFinal cipher (byte-array ct))))
