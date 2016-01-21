@@ -249,7 +249,7 @@
 (defn get-keysize-edit-distance
   "get the mean keysize distance of k in the sequence
   of bytes ar. Do this n times. Returns a number"
-  [ar k n]
+  [k n ar]
   (let [s (partition k ar)
         t (rest s)
         g (take n s)
@@ -264,7 +264,7 @@
          (map first
               (sort-by second
                        (for [i (range start end)]
-                         [i (get-keysize-edit-distance code-phrase i 4)]))))))
+                         [i (get-keysize-edit-distance i 4 code-phrase)]))))))
 
 (defn block-sequence
   [source block-width]
@@ -301,3 +301,76 @@
         cipher (Cipher/getInstance "AES/ECB/NoPadding")]
     (.init cipher Cipher/DECRYPT_MODE k)
     (.doFinal cipher (byte-array ct))))
+
+;;; Set 1 Challenge 8 Detect AES-128-ECB
+
+
+;; DRAFT MATERIAL
+(def test-file-challenge-8a (line-seq (io/reader "test/clojure_crypto_challenge/8.txt")))
+
+(def temp (first test-file-challenge-8a))
+
+
+(defn max-block-repetitions
+  "Return fn to find most repeated block (size n) within a seq"
+  [n]
+  (fn [s]
+    (apply max
+           (vals
+            (frequencies (partition-all n s))))))
+
+(defn score-repetitions
+  ""
+  [n]
+  (fn [s]
+    {:score ((block-repetitions n) s) :code s}))
+
+(defn detect-AES-ECB-code-text
+  "AES ECB uses 16 Byte blocks. So if plain text has repeated
+  16 byte blocks, the coded text will too"
+  [x]
+  {:pre [(seq? x)]
+   :post [(seq? %)]}
+  (reverse
+   (sort-by :score
+            (map (score-repetitions 16) x))))
+
+(detect-AES-ECB-code-text test-file-challenge-8a)
+
+
+
+
+(defn string-as-bytes
+  [s]
+  (map byte s))
+
+(def key-sizes-xt
+  (comp
+   (map string-as-bytes)
+   (map #(vector (bytes-to-string %1) (get-keysize-edit-distance 16 4 %1)))))
+
+
+(reverse (sort-by second (sequence key-sizes-xt test-file-challenge-8a)))
+
+(defn non-failing-char-conversion
+  ""
+  [c]
+  (if (> c 31) (char c) "0"))
+
+(defn temp-temp
+  "doc-string"
+  [s phrase]
+  (str (apply str (map non-failing-char-conversion (decipher-aes-128-ecb phrase s))) "\n\r"))
+
+(defn decode-set
+  [phrase code-set]
+  (apply str (map #(temp-temp % phrase) (map decode-base16 code-set))))
+
+(map #(temp-temp % "YELLOW SUBMARINE") (map decode-base16 test-file-challenge-8a))
+
+(decode-set "YELLOW SUBMARINE" test-file-challenge-8a)
+
+(spit "silly.txt" (decode-set "inputtotheoracle" test-file-challenge-8a) )
+
+
+(map #(conj % \n) (map temp-temp (map decode-base16 test-file-challenge-8a)))

@@ -580,3 +580,129 @@ clojure-crypto-challenge.core> (quick-bench (math/expt 112 2))
     + Added little code to limit printing in repl. Add following to
       project.clj ":repl-options {:init (set! *print-length* 50)}"
     + So far in my testing, minimum sample line length need is 28.
+    + I'm now thinking I'll branch my code and try another way of
+      scoring the text. I'll try using combined frequency of
+      bigrams... trigrams even? But first branch my code (branch =
+      NewScoreMethod). Will also try another test framework
+      http://jayfields.com/expectations/.
+*** <2015-12-26 Sat>
+    + Making an R program test that scores a phrase based on bigrams.
+    + Looks like a Markov chain may suit analysis using bigrams. Can
+      create a Markov chain of probability based on current letter,
+      and next letter. The bigram frequencies I have are all
+      frequencies of next letters. That is each "row" sums to 1
+*** <2015-12-29 Tue>
+    + Think a simple Markov chain using bigrams will work. If I
+      multiply by 10, then disqualify any lines below 1, that should
+      be good start.
+*** <2015-12-31 Thu>
+    + Implementing markov chain in Clojure. Have done test run in R,
+      and it is pretty. Should be able to identify english in 5
+      characters
+    + I've partially implemented and changed to-asci-letter, and
+      score-line-as-english. These are not tested properly.
+*** <2016-01-01 Fri>
+    + Installed "expectations-mode" to use emacs and expecations (by
+      jayfields http://jayfields.com/expectations/introduction.html)
+    + I'm not convinced expecataions is working, or really
+      maintained. I could try speclj as an option
+      http://www.speclj.com/. I've not installed or investigated properly.
+    + Another option is to try assertions, pre conditions and post
+      conditions. I think these are built into clojure... takes me
+      back to Eiffel and CS1100 days.
+    + I think i've found a very interesting flaw in my algorithm. The
+      issue is that my bigram ranking fails for block cyphers. I
+      suspect the cause is that I'm trying to rank a sample
+      (i.e. every nth character) as a bigram. This is wrong, because
+      the selection of letters I have are not bigrams. They are the
+      nth character in words. For example for a long block cypher I
+      could be testing every 40th character, and artificially joining
+      them as bigrams. Need to look into this. Maybe a Markov bigram
+      chain will not work!
+*** <2016-01-02 Sat>
+    ... or maybe a single markov chain will work? It will be less
+    effective, but it might work... maybe. I will try it in R to see
+    what it looks like.
+*** <2016-01-05 Tue>
+    Haven't gotten very far in my R simulation. Have been working,
+    etc. Also, a big issue is the mess of my R code. I didn't maintain
+    it like a proper code base, so it's hard to extend/modify. I will
+    refactor it. Could be tricky with no unit tests, but I don't know
+    of that feature in R.
+*** <2016-01-10 Sun>
+    Refactoring still. Have plotted results and it looks like getting
+    skewed results because of lots of SPACE characters in one of the attemtps.
+*** <2016-01-14 Thu>
+    Change the way I match values. Only spaces will go to space. All other
+    punctuation will go to 1.
+*** <2016-01-16 Sat>
+    Found the problems I think. There is a line (line 140 - function
+    summarise_attempts) that filters out phase_score = 0. This means
+    that invalid characters are ignored, rather than penalised. Hence
+    a string will lots of invalid characters and "SPACE" characters
+    will look valid.
+*** <2016-01-17 Sun>
+    Little aside. I've written an eLisp function that opens a project
+    source and test source in emacs, and starts Cider. Needs a little
+    polishing, but at least it reads everything it needs from the
+    project.clj. Just need to runemacs from the project directory.
+*** <2016-01-18 Mon>
+    I've reverted to Master, and quit the search for a better
+    algorithm. I've copied across this org file, and the run emacs
+    scripts i wrote.
+*** <2016-01-18 Mon 21:10>
+    Re-run tests successfully.
+** Detect AES phrase (Set 1 Challenge 8)
+*** <2016-01-18 Mon 21:15>
+    My thoughts on this challenge  are to use brute force.
+    1. Seperate the text into parts (separated by new line I assume).
+    2. On each part guess the length of the pass phrase
+    3. Select the best length, and divide input into one block for
+       each byte in length of line.
+    4. Apply ECB of just one byte on the line.
+    5. Assess decode for "englishness"
+    6. Find best decode byte, and recombine other decode bytes for text.
+    7. Decode text and score as english.
+    8. Do this for each plain-text part in the file.
+    9. Return the piece of the has best english score.
+*** <2016-01-19 Tue 07:06>
+    I think my thoughts on the challenge were wrong. I assumed I need
+    to break the code. Infact I think I need to just detect which line
+    is AES ECB encoded. Then the challenge would be to break the line
+    I guess.
+    This is a little interesting. I guess I'm searching for a key
+    length and a line combination that have a higher score than all
+    the rest.
+    I can start by getting best code lengths for each line, but then I
+    need some measure of how good that code length is. If I return the
+    hamming distance of each attempt, that should give good
+    indicator. Also, remember that AES ECB uses 16 byte blocks, so
+    don't need to scan for multiple lengths.
+*** <2016-01-19 Tue 21:09>
+    Have spit the output of "YELLOW SUBMARINE"... it doesn't seem to
+    have worked.
+    I've noticed a little flaw in my output. I should be getting 204
+    lines out, but I'm getting 134. Maybe the decoding is losing
+    lines, or merging them. That's why "YELLOW SUBMARINE" doesn't
+    work.
+*** <2016-01-20 Wed 06:46>
+    Checked Stackh-overflow. Suggestion was to do what I'm doing. Look
+    for repeated 16 byte patterns.
+*** <2016-01-20 Wed 20:57>
+    I'm faffing around a bit on this one. I think I can complete the
+    challenge, but I don't know how to validate I'm correct. It would
+    be easier if I knew the expected output and whic line is valid
+    (i.e. the answer). Then i can write my tests, and code backwards...
+*** <2016-01-21 Thu 06:55>
+    Slight detour. Changing user variable path to include
+    imagemagik.
+    The following commands added a value to the User Path environment
+    variable:
+    #+begin_src powershell
+    $DJTemp = (Get-ChildItem Env:Path).Value
+    $DJTemp2 = $DJTemp + ";C\Program Files\ImageMagick-6.8.9-Q16"
+    [Environment]::SetEnvironmentVariable("Path", $DJTemp2, "User")
+    [[https://technet.microsoft.com/en-us/library/ff730964.aspx][MS Reference to modify variables]]
+    #+end_src
+*** <2016-01-21 Thu 21:18>
+    Solved Challenge 8. Was pretty straight forward in clojure. 

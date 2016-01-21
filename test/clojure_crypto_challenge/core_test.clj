@@ -152,7 +152,7 @@
 
 (deftest test-get-keysize-edit-distance
   (testing "keysize has smallest hamming distance between blocks"
-    (are [r ar k n] (= r (get-keysize-edit-distance (map byte ar) k n))
+    (are [r ar k n] (= r (get-keysize-edit-distance k n (map byte ar)))
       0 "aa" 1 1
       1 "on" 1 1
       1 "oonn" 2 2
@@ -183,3 +183,16 @@
          test-results-challenge-7
          (bytes-to-string
           (decipher-aes-128-ecb "YELLOW SUBMARINE" test-file-challenge-7b))))))
+
+
+;;; Set 1 Challenge 8
+
+
+'("this is thisis the is the") 4
+'("this" " is " "this" "is t" "he i" "s th" "e")
+{"this" 2, " is " 1, "is t" 1, "he i" 1, "s th" 1, "e" 1}
+2
+
+
+
+(deftest decode)
