@@ -97,39 +97,39 @@
 
 ;;;  Letter  Frequency
 
-(defn- scale-to-frequency
-  [x s]
-  (->>
-   x
-   bigdec
-   (* s)
-   math/round
-   int))
-
-(def filename "./src/clojure_crypto_challenge/letters.csv")
-
 (defn- clean-space [s] (if (= s "SPACE") " " s))
 
 (defn- load-reference-lists
-  [fname]
-  (let [fl (slurp fname)
+  [s]
+  (let [fl s
         digits (map bigdec (re-seq #"0\.[0-9]+" fl))
         letters (map #(apply short (clean-space %)) (re-seq #"[a-z]|SPACE" fl))
         ]
-    (vector letters digits)))
+    ;; (vector letters digits)
+    {:letters letters, :frequencies digits}
+    ))
 
-(def llist (load-reference-lists filename))
+(defn format-reader-string
+  "make a string representation of a list a clojure list for REPL"
+  [s]
+  (string/replace s "(" "'("))
 
-                                        ;
-;;; NASTYNESS TO REMOVE!!
-;; (def full-array (int-array 128))
-;; (dotimes [i (count (llist 0))]
-;;   (aset-byte full-array
-;;              (nth (llist 0) i)
-;;              (byte  (int-multiply 30 (nth (llist 1) i)))))
+(def raw-letters-file "./src/clojure_crypto_challenge/letters.csv")
+(def letter-sequence-file "./src/clojure_crypto_challenge/letter-vectors.txt")
 
+(defn create-letter-frequency-list-file
+  "make a file with letter frequencies we can load directly into Repl.
+  Only needed when the letter frequencies file changes."
+  [in-file out-file]
+  {:pre [(string? in-file)
+         (.exists (io/file in-file))
+         (string? out-file)]
+   :post [(.exists (io/file out-file))]}
+  (spit out-file (str (format-reader-string (load-reference-lists (slurp in-file))))))
 
+;; (create-letter-frequency-list-file raw-letters-file letter-sequence-file)
 
+(def english-frequency-map (load-string (slurp letter-sequence-file)))
 
 (defn int-multiply
   [s v]
@@ -137,12 +137,12 @@
 
 (defn- map-reference-lists
   [vs s]
-  (zipmap (vs 0) (map #(int-multiply s %) (vs 1))))
+  (zipmap (:letters vs)
+          (map #(int-multiply s %) (:frequencies vs))))
 
 (def memo-map-reference-lists
   (memoize map-reference-lists))
 
-(def fixed-letter-map (memo-map-reference-lists llist 34))
 
 (defn to-ascii-letter
   [y]
@@ -157,20 +157,34 @@
     (if nay (math/expt x 2) (/ (math/expt (-  x y) 2) y))))
 
 
-(def line-sample 28) ;number of chars to determine english
+(def max-line-sample-length 28) ;number of chars to determine english
+
+(defn letter-frequencies
+  [c]
+  (frequencies (map to-ascii-letter c)))
+
+(defn reduce-map-values
+  [f m]
+  (reduce f (vals m)))
+
+(defn line-score-as-fn
+  "fn to score line as limited to line length. m is language frequency map,
+  n is max length to score (for performance)"
+  [m n]
+  {:pre [(map? m)
+         (number? n) (pos? n)]}
+  (fn [x]
+    (let [c (take n x)
+          lm (memo-map-reference-lists m (count c))]
+      (->>
+       (letter-frequencies c)
+       (merge-with chi-distance lm)
+       (reduce-map-values +)))))
+
 
 (defn score-line-as-english
   [x]
-  (let [c (take line-sample x)
-        lm (memo-map-reference-lists llist (count c))]
-    (->>
-     c
-     (map to-ascii-letter)
-     frequencies
-     (merge-with chi-distance lm)
-     vals
-     (reduce +)
-     )))
+  ((line-score-as-fn english-frequency-map max-line-sample-length) x))
 
 
 (defn score-byte-on-code
@@ -195,10 +209,7 @@
 
 (defn get-XOR-score-best-match
   [s]
-  (->>
-   s
-   get-XOR-score-table
-   (min-tupple 1)))
+  (min-tupple 1 (get-XOR-score-table s)))
 
 (defn find-decode-byte
   [x]
@@ -241,6 +252,9 @@
 (defn get-hamming-distance
   "Get hamming distance of two lists"
   [x y]
+  {:pre [(seq? x)
+         (seq? y)]
+   :post [(number? %)]}
   (->>
    (fixed-XOR x y)
    (map bit-count)
@@ -279,8 +293,7 @@
 (defn break-repeat-XOR-cypher
   [code-phrase]
   (->>
-   code-phrase
-   get-keysizes
+   (get-keysizes code-phrase)
    (map #(block-sequence code-phrase %))
    (map #(map find-decode-byte %))
    (map #(fixed-XOR code-phrase (create-repeating-key %)))
@@ -304,26 +317,23 @@
 
 ;;; Set 1 Challenge 8 Detect AES-128-ECB
 
-
-;; DRAFT MATERIAL
-(def test-file-challenge-8a (line-seq (io/reader "test/clojure_crypto_challenge/8.txt")))
-
-(def temp (first test-file-challenge-8a))
-
-
 (defn max-block-repetitions
   "Return fn to find most repeated block (size n) within a seq"
   [n]
+  {:pre [(number? n) (> n 0)]}
   (fn [s]
+    {:pre [(sequential? s)]
+     :post [(number? %)]}
     (apply max
            (vals
             (frequencies (partition-all n s))))))
 
 (defn score-repetitions
-  ""
+  "Return fn to return map of :score and :code"
   [n]
   (fn [s]
-    {:score ((block-repetitions n) s) :code s}))
+    {:post [(map? %)]}
+    {:score ((max-block-repetitions n) s) :code s}))
 
 (defn detect-AES-ECB-code-text
   "AES ECB uses 16 Byte blocks. So if plain text has repeated
@@ -334,43 +344,3 @@
   (reverse
    (sort-by :score
             (map (score-repetitions 16) x))))
-
-(detect-AES-ECB-code-text test-file-challenge-8a)
-
-
-
-
-(defn string-as-bytes
-  [s]
-  (map byte s))
-
-(def key-sizes-xt
-  (comp
-   (map string-as-bytes)
-   (map #(vector (bytes-to-string %1) (get-keysize-edit-distance 16 4 %1)))))
-
-
-(reverse (sort-by second (sequence key-sizes-xt test-file-challenge-8a)))
-
-(defn non-failing-char-conversion
-  ""
-  [c]
-  (if (> c 31) (char c) "0"))
-
-(defn temp-temp
-  "doc-string"
-  [s phrase]
-  (str (apply str (map non-failing-char-conversion (decipher-aes-128-ecb phrase s))) "\n\r"))
-
-(defn decode-set
-  [phrase code-set]
-  (apply str (map #(temp-temp % phrase) (map decode-base16 code-set))))
-
-(map #(temp-temp % "YELLOW SUBMARINE") (map decode-base16 test-file-challenge-8a))
-
-(decode-set "YELLOW SUBMARINE" test-file-challenge-8a)
-
-(spit "silly.txt" (decode-set "inputtotheoracle" test-file-challenge-8a) )
-
-
-(map #(conj % \n) (map temp-temp (map decode-base16 test-file-challenge-8a)))

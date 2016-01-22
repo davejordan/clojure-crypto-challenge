@@ -187,12 +187,14 @@
 
 ;;; Set 1 Challenge 8
 
-
-'("this is thisis the is the") 4
-'("this" " is " "this" "is t" "he i" "s th" "e")
-{"this" 2, " is " 1, "is t" 1, "he i" 1, "s th" 1, "e" 1}
-2
+(deftest test-block-repetitions
+  (testing "Sequence is blocked correctly"
+    (is (= ((max-block-repetitions 4) '(1 2 3 4 1 2 3 4 2 2 3 3 2 1 2 3 4 5)) 2))))
 
 
+(def test-file-challenge-8a (line-seq (io/reader "test/clojure_crypto_challenge/8.txt")))
 
-(deftest decode)
+(deftest test-detect-AES-ECB-code-text
+  (testing "Test Set 1 Challenge 8"
+    (is (= (:score (first (detect-AES-ECB-code-text
+                           (map decode-base16 test-file-challenge-8a)))) 4))))

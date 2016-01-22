@@ -705,4 +705,8 @@ clojure-crypto-challenge.core> (quick-bench (math/expt 112 2))
     [[https://technet.microsoft.com/en-us/library/ff730964.aspx][MS Reference to modify variables]]
     #+end_src
 *** <2016-01-21 Thu 21:18>
-    Solved Challenge 8. Was pretty straight forward in clojure. 
+    Solved Challenge 8. Was pretty straight forward in clojure.
+*** <2016-01-22 Fri 08:58>
+    Writing a deftest snippet in yasnippet.
+*** <2016-01-22 Fri 14:01>
+Cleaned up the code a bit.
