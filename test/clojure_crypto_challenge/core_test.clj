@@ -182,7 +182,7 @@
     (is (=
          test-results-challenge-7
          (bytes-to-string
-          (decipher-aes-128-ecb "YELLOW SUBMARINE" test-file-challenge-7b))))))
+          (aes-128-ecb-decrypt "YELLOW SUBMARINE" test-file-challenge-7b))))))
 
 
 ;;; Set 1 Challenge 8
@@ -198,3 +198,28 @@
   (testing "Test Set 1 Challenge 8"
     (is (= (:score (first (detect-AES-ECB-code-text
                            (map decode-base16 test-file-challenge-8a)))) 4))))
+
+
+;;; Set 2 Challenge 9
+
+(deftest test-pad-sequence
+  (testing "pad a sequence to set size"
+    (is (= (pad-sequence 10 \X "YELLOW") '(\Y \E \L \L \O \W \X \X \X \X)))))
+
+;;; Set 2 Challenge 10
+
+(bytes-to-string (aes-128-ecb-decrypt "YELLOW CATMAINES" (aes-128-ecb-encrypt "YELLOW CATMAINES" (map byte "YELLOW SUBMARINE"))))
+
+(deftest test-CBC-encrypt-decrypt
+  (testing "cbc on 16 bytes with iv=0 is ecb"
+    (is (= (aes-128-ecb-encrypt "YELLOW SUBMARINE" (map byte "YELLOW SUBMARINE"))
+           (cbc-encrypt "YELLOW SUBMARINE" (map byte "YELLOW SUBMARINE")
+                        [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]))))
+  (testing "decrypt an encrypted string"
+    (is (= "YELLOW SUBMARINE"
+           (bytes-to-string
+            (cbc-decrypt "YELLOW SUBMARINE"
+                         (cbc-encrypt "YELLOW SUBMARINE"
+                                      (map byte "YELLOW SUBMARINE")
+                                      [50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0])
+                         [50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]))))))

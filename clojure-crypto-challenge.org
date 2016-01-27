@@ -45,11 +45,11 @@
 
 ** Single-byte XOR cipher
 ***   2015-11-04
-    Interesting! Need to break a cipher. Suggested to use character
-    frequency, so need to look that up...
-    Letter frequency table came from:
-    http://www.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
-    My idea to score the result text is:
+      Interesting! Need to break a cipher. Suggested to use character
+      frequency, so need to look that up...
+      Letter frequency table came from:
+      http://www.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
+      My idea to score the result text is:
 1. calculate score for each letter in text
 2. calcualte relative score for each letter
 3. calculate absolute difference in relative score for each letter (between
@@ -709,4 +709,34 @@ clojure-crypto-challenge.core> (quick-bench (math/expt 112 2))
 *** <2016-01-22 Fri 08:58>
     Writing a deftest snippet in yasnippet.
 *** <2016-01-22 Fri 14:01>
-Cleaned up the code a bit.
+    Cleaned up the code a bit.
+* Set 2
+** Implement PKCS#7 padding (Set 2 Challenge 9)
+*** <2016-01-22 Fri 15:32>
+    Challenge 9 was very very easy.
+** Implement CBC mode (Set 2 Challenge 10)
+*** <2016-01-22 Fri 21:35>
+    CBC seems to be a synchronous encryption scheme. The plain-text
+    block is combined with the previous encrypted block before
+    encryption.
+*** <2016-01-25 Mon 07:00>
+    A function that takes two 16 byte blocks, returns 1 16 byte
+    block that is encrypted of the two blocks XORd.
+*** <2016-01-25 Mon 20:33>
+    CLOCK: [2016-01-25 Mon 20:47]--[2016-01-25 Mon 21:48] =>  1:01
+    Have a failing test. decipher-aes-128-ecb is returning 0s when
+    applied to an encrypted array. Not sure how it is happening.
+*** <2016-01-26 Tue 08:12>
+    CLOCK: [2016-01-26 Tue 13:31]--[2016-01-26 Tue 15:59] =>  2:28
+    Fixed issue, and improved test. Was simply that cbc on iv=0 is
+    ecb.
+    Added some extra pre and post conditions.
+    Have the CBC "working", but not sure. In theory, I shold be able to
+    decrypt the first line of the file using normal ecb (because
+    iv=0), but it doesn't give a valid answer.
+    Think I've found part of the problem. The test text is encoded
+    base64.
+*** <2016-01-27 Wed 06:52>
+    CLOCK: [2016-01-27 Wed 06:52]--[2016-01-27 Wed 07:14] =>  0:22
+    I've solved it using REPL. Just need to clean it up.
+It's cleaned up in a couple of functions. Needs a bit of refactor. 

@@ -307,13 +307,20 @@
 
 ;;; Set 1 Challenge 7 AES-128-ECB cyper
 
-(defn decipher-aes-128-ecb
+(defn aes-128-ecb-cipher-fn
+  "doc-string"
+  [md]
+  (fn [ky ct]
+    (let [k (SecretKeySpec. (.getBytes ky) "AES")
+          cipher (Cipher/getInstance "AES/ECB/NoPadding")]
+      (.init cipher md k)
+      (.doFinal cipher (byte-array ct)))))
+
+
+(defn aes-128-ecb-decrypt
   "two strings, ky is key string, ct is cipher text. returns byte-array"
   [ky ct]
-  (let [k (SecretKeySpec. (.getBytes ky) "AES")
-        cipher (Cipher/getInstance "AES/ECB/NoPadding")]
-    (.init cipher Cipher/DECRYPT_MODE k)
-    (.doFinal cipher (byte-array ct))))
+  (sequence ((aes-128-ecb-cipher-fn Cipher/DECRYPT_MODE) ky ct)))
 
 ;;; Set 1 Challenge 8 Detect AES-128-ECB
 
@@ -344,3 +351,79 @@
   (reverse
    (sort-by :score
             (map (score-repetitions 16) x))))
+
+;;; Set 2 Challenge 9
+
+(defn pad-sequence
+  "doc-string"
+  [n p s]
+  (first (partition n n (repeat p) s)))
+
+;;; Set 2 Challenge 10
+
+(defn aes-128-ecb-encrypt
+  "doc-string"
+  [ky ct]
+  (sequence ((aes-128-ecb-cipher-fn Cipher/ENCRYPT_MODE) ky ct)))
+
+(defn cbc-encrypt
+  ""
+  [ky phrase iv]
+  {:pre [(string? ky) (= (count ky) 16)
+         (sequential? phrase) (= (count phrase) 16)
+         (sequential? iv) (= (count iv) 16)]
+   :post [(sequential? %) (= (count %) 16)]}
+  (aes-128-ecb-encrypt ky (fixed-XOR (map byte phrase) iv)))
+
+(defn cbc-decrypt
+  ""
+  [ky code iv]
+  {:pre [(string? ky) (= (count ky) 16)
+         (sequential? code) (= (count code) 16)
+         (sequential? iv) (= (count iv) 16)]
+   :post [(sequential? %) (= (count %) 16)]
+   }
+  (fixed-XOR iv (aes-128-ecb-decrypt ky code)))
+
+{:plaintext "This is the plain text to be encrypted"
+ :key "YELLOW SUBMARINE"
+ :iv (repeat 16 0)}
+
+{:plaintext ["This is the plai" "n text to be enc" "rypted\0\0\0\0\0\0\0\0\0\0"]
+ :key "YELLOW SUBMARINE"
+ :iv (repeat 16 0)}
+
+(defn zero-padded-16-byte-blocks
+  "doc-string"
+  [s]
+  (partition 16 16 (repeat 0) s))
+
+
+(defn block-cipher-encrypt
+  "doc-string"
+  [ky phrase]
+  (flatten
+   (drop 1 (reduce #(conj %1 (cbc-encrypt ky %2 (first %1))) [(repeat 16 0)] (zero-padded-16-byte-blocks phrase)))))
+
+
+
+
+(defn block-cipher-decrypt
+  "doc-string"
+  [ky phrase]
+  (let [aes (map #(aes-128-ecb-decrypt ky %1) (zero-padded-16-byte-blocks phrase))
+        coded (conj  (zero-padded-16-byte-blocks dj-1-test) (repeat 16 0))]
+    (bytes-to-string (flatten (map fixed-XOR aes coded)))))
+
+
+(bytes-to-string (block-cipher-decrypt "YELLOW SUBMARINE" (block-cipher-encrypt "YELLOW SUBMARINE" "This is the plain text to be encrypted")))
+
+
+(defn decoded-base64-file
+  "doc-string"
+  [file]
+  (decode-base64 (flatten (re-seq #"\S+" (slurp file)))))
+
+
+
+(block-cipher-decrypt "YELLOW SUBMARINE" (decoded-base64-file "test/clojure_crypto_challenge/10.txt"))
