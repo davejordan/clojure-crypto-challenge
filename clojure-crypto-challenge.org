@@ -739,4 +739,8 @@ clojure-crypto-challenge.core> (quick-bench (math/expt 112 2))
 *** <2016-01-27 Wed 06:52>
     CLOCK: [2016-01-27 Wed 06:52]--[2016-01-27 Wed 07:14] =>  0:22
     I've solved it using REPL. Just need to clean it up.
-It's cleaned up in a couple of functions. Needs a bit of refactor. 
+    It's cleaned up in a couple of functions. Needs a bit of refactor.
+*** <2016-01-31 Sun 22:41>
+    Cleaned up and refactored. Also stripped padded values from
+    deciphered text.
+** An ECB/CBC detection oracle (Set 2 Challenge 11)

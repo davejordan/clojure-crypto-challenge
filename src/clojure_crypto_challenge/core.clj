@@ -354,10 +354,16 @@
 
 ;;; Set 2 Challenge 9
 
-(defn pad-sequence
+
+
+(defn- padded-partition
+  [n p s]
+  (partition n n (repeat p) s))
+
+(defn padded-block
   "doc-string"
   [n p s]
-  (first (partition n n (repeat p) s)))
+  (first (padded-partition n p s)))
 
 ;;; Set 2 Challenge 10
 
@@ -373,57 +379,57 @@
          (sequential? phrase) (= (count phrase) 16)
          (sequential? iv) (= (count iv) 16)]
    :post [(sequential? %) (= (count %) 16)]}
-  (aes-128-ecb-encrypt ky (fixed-XOR (map byte phrase) iv)))
-
-(defn cbc-decrypt
-  ""
-  [ky code iv]
-  {:pre [(string? ky) (= (count ky) 16)
-         (sequential? code) (= (count code) 16)
-         (sequential? iv) (= (count iv) 16)]
-   :post [(sequential? %) (= (count %) 16)]
-   }
-  (fixed-XOR iv (aes-128-ecb-decrypt ky code)))
-
-{:plaintext "This is the plain text to be encrypted"
- :key "YELLOW SUBMARINE"
- :iv (repeat 16 0)}
-
-{:plaintext ["This is the plai" "n text to be enc" "rypted\0\0\0\0\0\0\0\0\0\0"]
- :key "YELLOW SUBMARINE"
- :iv (repeat 16 0)}
+  (aes-128-ecb-encrypt ky (fixed-XOR phrase iv)))
 
 (defn zero-padded-16-byte-blocks
   "doc-string"
   [s]
-  (partition 16 16 (repeat 0) s))
+  (padded-partition 16 0 s))
 
 
-(defn block-cipher-encrypt
+(defn- append-modified-fn
+  [f]
+  (fn [coll y] (conj coll (f y (peek coll)))))
+
+
+(defn- chain-blocker-fn
+  [f]
+  (fn [blocked-phrase init-vec]
+    (flatten
+     (drop 1 (reduce (append-modified-fn f) [init-vec] blocked-phrase)))))
+
+(reduce (append-modified-fn +) [100 11 110000] [10101 0101010 101010 11 1111 334])
+
+(defn aes-128-cbc-encipher
   "doc-string"
-  [ky phrase]
-  (flatten
-   (drop 1 (reduce #(conj %1 (cbc-encrypt ky %2 (first %1))) [(repeat 16 0)] (zero-padded-16-byte-blocks phrase)))))
+  [ky phrase iv]
+  {:pre [(= (count ky) (count iv) 16)
+         (string? ky)
+         (sequential? iv)]
+   :post [(>= (count %) 16)
+          (zero? (mod (count %) 16))
+          (>= (count %) (count phrase))
+          (<= (count %) (+ (count phrase) 16))]}
+  ((chain-blocker-fn (partial  cbc-encrypt ky))
+   (zero-padded-16-byte-blocks phrase)  iv))
 
+(defn zero-unpadded
+  "return a padded enciphered text to its original state"
+  [s]
+  (string/replace s "\00" ""))
 
-
-
-(defn block-cipher-decrypt
-  "doc-string"
-  [ky phrase]
-  (let [aes (map #(aes-128-ecb-decrypt ky %1) (zero-padded-16-byte-blocks phrase))
-        coded (conj  (zero-padded-16-byte-blocks dj-1-test) (repeat 16 0))]
-    (bytes-to-string (flatten (map fixed-XOR aes coded)))))
-
-
-(bytes-to-string (block-cipher-decrypt "YELLOW SUBMARINE" (block-cipher-encrypt "YELLOW SUBMARINE" "This is the plain text to be encrypted")))
-
+(defn aes-128-cbc-decipher
+  "AES CBC is a 16 byte chained block cipher."
+  [ky cipher iv]
+  {:pre [(= (count ky) (count iv) 16)]
+   :post [(= (count cipher) (count %))]}
+  (bytes-to-string (fixed-XOR
+                    (aes-128-ecb-decrypt ky cipher)
+                    (into (seq cipher) (reverse iv))))) ;into conj's 1 at a time
 
 (defn decoded-base64-file
-  "doc-string"
+  "carriage returns seem to break decode base64"
   [file]
-  (decode-base64 (flatten (re-seq #"\S+" (slurp file)))))
+  (decode-base64 (string/replace (slurp file) "\n" "")))
 
-
-
-(block-cipher-decrypt "YELLOW SUBMARINE" (decoded-base64-file "test/clojure_crypto_challenge/10.txt"))
+;;; Set 2 Challenge 11

@@ -204,22 +204,47 @@
 
 (deftest test-pad-sequence
   (testing "pad a sequence to set size"
-    (is (= (pad-sequence 10 \X "YELLOW") '(\Y \E \L \L \O \W \X \X \X \X)))))
+    (is (= (padded-block 10 \X "YELLOW") '(\Y \E \L \L \O \W \X \X \X \X)))))
 
 ;;; Set 2 Challenge 10
 
-(bytes-to-string (aes-128-ecb-decrypt "YELLOW CATMAINES" (aes-128-ecb-encrypt "YELLOW CATMAINES" (map byte "YELLOW SUBMARINE"))))
+(deftest test-aes-128-ecb-encrypt-decrypt
+  (testing "ECB works on 16 byte block"
+    (is (= "YELLOW PLAIN TXT"
+           (bytes-to-string
+            (aes-128-ecb-decrypt "YELLOW CATMAINES"
+                                 (aes-128-ecb-encrypt
+                                  "YELLOW CATMAINES"
+                                  (map byte "YELLOW PLAIN TXT"))))))))
+
+(deftest test-aes-128-cbc-encrypt-decrypt
+  (testing "CBC works on 16 byte block"
+    (is (= "YELLOW PLAIN TXT"
+           (bytes-to-string
+            (aes-128-cbc-decipher "YELLOW SUBMARINE"
+                                  (aes-128-cbc-encipher "YELLOW SUBMARINE"
+                                                        (map byte "YELLOW PLAIN TXT")
+                                                        (range 16))
+                                  (range 16)))))))
+
 
 (deftest test-CBC-encrypt-decrypt
-  (testing "cbc on 16 bytes with iv=0 is ecb"
-    (is (= (aes-128-ecb-encrypt "YELLOW SUBMARINE" (map byte "YELLOW SUBMARINE"))
-           (cbc-encrypt "YELLOW SUBMARINE" (map byte "YELLOW SUBMARINE")
-                        [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]))))
-  (testing "decrypt an encrypted string"
-    (is (= "YELLOW SUBMARINE"
-           (bytes-to-string
-            (cbc-decrypt "YELLOW SUBMARINE"
-                         (cbc-encrypt "YELLOW SUBMARINE"
-                                      (map byte "YELLOW SUBMARINE")
-                                      [50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0])
-                         [50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]))))))
+  (testing "cbc on 16 bytes with iv=0 is ecb - remove padding"
+    (is (= "This is the test to code"
+           (zero-unpadded
+            (aes-128-cbc-decipher
+             "YELLOW SUBMARINE"
+             (aes-128-cbc-encipher "YELLOW SUBMARINE"
+                                   (map byte "This is the test to code")
+                                   (range 16))
+             (range 16)))))))
+
+
+(deftest test-block-cipher-decrypt
+  (testing "Test Set 2 Challenge 10"
+    (is (=
+         (aes-128-cbc-decipher
+          "YELLOW SUBMARINE"
+          (decoded-base64-file "test/clojure_crypto_challenge/10.txt")
+          (repeat 16 0))
+         (slurp "test/clojure_crypto_challenge/10answer.txt")))))
