@@ -744,3 +744,21 @@ clojure-crypto-challenge.core> (quick-bench (math/expt 112 2))
     Cleaned up and refactored. Also stripped padded values from
     deciphered text.
 ** An ECB/CBC detection oracle (Set 2 Challenge 11)
+*** <2016-01-31 Sun 22:57>
+    CLOCK: [2016-01-31 Sun 22:57]--[2016-01-31 Sun 23:50] =>  0:53
+    Random byte generator and random key generator. Encrypt some text
+    with that random key.
+*** <2016-02-01 Mon 07:38>
+    Dealing with some interesting issues on conversion between string and
+    byte. Need to be careful where conversions are happening, and what is
+    being passed around (e.g. byte arrays, char arrays, strings, or int
+    arrays). All can have problems. For example, there is no char of
+    -11. Even though I can convert a string with extended chars into
+    bytes, and get -11. If I convert string with extended chars to int,
+    then the same -11 will become 138 - which does have a char.
+**** Identify type of cipher.
+     I can't see a better way than running 16 partitions...
+     Actually, don't need the 16 partitions. There is nothing special about
+     the text, all that matters is I look for repetitions!
+** Byte-at-a-time ECB decription (Simple) (Set 2 Challenge 12)
+

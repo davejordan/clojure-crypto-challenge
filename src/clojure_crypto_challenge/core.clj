@@ -7,6 +7,12 @@
             javax.crypto.Cipher
             javax.crypto.spec.SecretKeySpec))
 
+(defn string->bytesvec
+  "robust way to convert string to vector of bytes"
+  [s]
+  (vec (.getBytes s)))
+
+
 
 ;; Set 1 Challenge 1 - Re-encode base16 to base64
 (defn encode-byte-base64
@@ -285,9 +291,12 @@
   (for [k (range block-width)]
     (take-nth block-width (drop k source))))
 
-(defn bytes-to-string
+
+(defn bytes->string
   [x]
-  (apply str (map char x)))
+  (String. (byte-array x)))
+
+
 
 
 (defn break-repeat-XOR-cypher
@@ -307,14 +316,22 @@
 
 ;;; Set 1 Challenge 7 AES-128-ECB cyper
 
+(defn- as-byte-array
+  [s]
+  {:pre [(or (string? s)
+             (and  (sequential? s)
+                   (every? number? s)))]}
+  (byte-array (if (string? s) (.getBytes s) s)))
+
+
 (defn aes-128-ecb-cipher-fn
   "doc-string"
   [md]
   (fn [ky ct]
-    (let [k (SecretKeySpec. (.getBytes ky) "AES")
+    (let [k (SecretKeySpec. (as-byte-array ky) "AES")
           cipher (Cipher/getInstance "AES/ECB/NoPadding")]
       (.init cipher md k)
-      (.doFinal cipher (byte-array ct)))))
+      (.doFinal cipher (as-byte-array ct)))))
 
 
 (defn aes-128-ecb-decrypt
@@ -324,23 +341,33 @@
 
 ;;; Set 1 Challenge 8 Detect AES-128-ECB
 
+(defn- score-block-repetitions
+  [n coll]
+  )
+
+
 (defn max-block-repetitions
-  "Return fn to find most repeated block (size n) within a seq"
-  [n]
-  {:pre [(number? n) (> n 0)]}
-  (fn [s]
-    {:pre [(sequential? s)]
-     :post [(number? %)]}
-    (apply max
-           (vals
-            (frequencies (partition-all n s))))))
+  "Return fn to find most repetitions of an item in a seq"
+  [coll]
+  {:pre [(sequential? coll)]
+   :post [(number? %)]}
+  (apply max
+         (vals
+          (frequencies coll))))
+
+(defn ratio-distinct
+  "ratio of distinct items in a list. score > 1 shows repetitions"
+  [coll]
+  (/ (count coll) (count (distinct coll))))
 
 (defn score-repetitions
-  "Return fn to return map of :score and :code"
-  [n]
-  (fn [s]
+  "Return mapping fn to return map of :score and :code.
+  f is compare fn. n is block size"
+  [f n]
+  (fn [coll]
     {:post [(map? %)]}
-    {:score ((max-block-repetitions n) s) :code s}))
+    {:score (f (partition-all n coll)) :code coll}))
+
 
 (defn detect-AES-ECB-code-text
   "AES ECB uses 16 Byte blocks. So if plain text has repeated
@@ -350,11 +377,9 @@
    :post [(seq? %)]}
   (reverse
    (sort-by :score
-            (map (score-repetitions 16) x))))
+            (map (score-repetitions max-block-repetitions 16) x))))
 
 ;;; Set 2 Challenge 9
-
-
 
 (defn- padded-partition
   [n p s]
@@ -375,7 +400,7 @@
 (defn cbc-encrypt
   ""
   [ky phrase iv]
-  {:pre [(string? ky) (= (count ky) 16)
+  {:pre [ (= (count ky) 16)
          (sequential? phrase) (= (count phrase) 16)
          (sequential? iv) (= (count iv) 16)]
    :post [(sequential? %) (= (count %) 16)]}
@@ -386,11 +411,9 @@
   [s]
   (padded-partition 16 0 s))
 
-
 (defn- append-modified-fn
   [f]
   (fn [coll y] (conj coll (f y (peek coll)))))
-
 
 (defn- chain-blocker-fn
   [f]
@@ -398,13 +421,11 @@
     (flatten
      (drop 1 (reduce (append-modified-fn f) [init-vec] blocked-phrase)))))
 
-(reduce (append-modified-fn +) [100 11 110000] [10101 0101010 101010 11 1111 334])
 
 (defn aes-128-cbc-encipher
   "doc-string"
   [ky phrase iv]
   {:pre [(= (count ky) (count iv) 16)
-         (string? ky)
          (sequential? iv)]
    :post [(>= (count %) 16)
           (zero? (mod (count %) 16))
@@ -423,9 +444,9 @@
   [ky cipher iv]
   {:pre [(= (count ky) (count iv) 16)]
    :post [(= (count cipher) (count %))]}
-  (bytes-to-string (fixed-XOR
-                    (aes-128-ecb-decrypt ky cipher)
-                    (into (seq cipher) (reverse iv))))) ;into conj's 1 at a time
+  (fixed-XOR
+   (aes-128-ecb-decrypt ky cipher)
+   (into (seq cipher) (reverse iv)))) ;into conj's 1 at a time
 
 (defn decoded-base64-file
   "carriage returns seem to break decode base64"
@@ -433,3 +454,62 @@
   (decode-base64 (string/replace (slurp file) "\n" "")))
 
 ;;; Set 2 Challenge 11
+
+
+(defn- rand-int-in-range
+  [x y]
+  {:pre [(< x y)]
+   :post [(>= % x) (< % y)]}
+  (rand-nth (range x y)))
+
+
+(defn rand-byte-sequence
+  ""
+  ([n]
+   (rand-byte-sequence n (inc n)))
+  ([x y]
+   (repeatedly (rand-int-in-range x y) #(rand-int 256))))
+
+
+
+(defn- random-padded-sequence
+  "as per challenge add 5 to 10 random bytes to plaintext"
+  [coll]
+  {:post [(<= (count coll) (+ (count coll) 11 11))]}
+  (flatten
+   (zero-padded-16-byte-blocks
+    (concat
+     (rand-byte-sequence 5 11)
+     coll
+     (rand-byte-sequence 5 11)))))
+
+
+(defn randomly-encrypted-aes
+  "doc-string"
+  [f coll]
+  (f
+   (rand-byte-sequence 16)
+   (random-padded-sequence coll)
+   (rand-byte-sequence 16)))
+
+
+
+(defn- aes-128-cbc-encipher-random-iv
+  []
+  (fn [ky phrase] (aes-128-cbc-encipher ky phrase (rand-byte-sequence 16))))
+
+(defn encryption-oracle
+  "randomly encrypt a sequence as either cbc or ecb adding random data to front and end"
+  [coll]
+
+  (let [f (rand-nth [(fn [x y & c] (aes-128-ecb-encrypt x y))
+                     aes-128-cbc-encipher])]
+    (randomly-encrypted-aes f coll)))
+
+
+(defn ecb?
+  "repeated blocks indicates an ecb encryption"
+  [coll]
+  (> (:score ((score-repetitions ratio-distinct 16) coll)) 1))
+
+;;; Set 2 Challenge 12

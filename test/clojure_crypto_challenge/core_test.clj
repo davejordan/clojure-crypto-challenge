@@ -166,7 +166,7 @@
 (deftest test-break-repeat-XOR-cypher
   (testing "known result as a string"
     (is (= "Terminator X: Bring the noise"
-           (bytes-to-string (break-repeat-XOR-cypher test-file-challenge-6b))))))
+           (bytes->string (break-repeat-XOR-cypher test-file-challenge-6b))))))
 
 ;;; Set 1 Challenge 7
 
@@ -181,15 +181,11 @@
   (testing "can open cipher with known key and result"
     (is (=
          test-results-challenge-7
-         (bytes-to-string
+         (bytes->string
           (aes-128-ecb-decrypt "YELLOW SUBMARINE" test-file-challenge-7b))))))
 
 
 ;;; Set 1 Challenge 8
-
-(deftest test-block-repetitions
-  (testing "Sequence is blocked correctly"
-    (is (= ((max-block-repetitions 4) '(1 2 3 4 1 2 3 4 2 2 3 3 2 1 2 3 4 5)) 2))))
 
 
 (def test-file-challenge-8a (line-seq (io/reader "test/clojure_crypto_challenge/8.txt")))
@@ -211,7 +207,7 @@
 (deftest test-aes-128-ecb-encrypt-decrypt
   (testing "ECB works on 16 byte block"
     (is (= "YELLOW PLAIN TXT"
-           (bytes-to-string
+           (bytes->string
             (aes-128-ecb-decrypt "YELLOW CATMAINES"
                                  (aes-128-ecb-encrypt
                                   "YELLOW CATMAINES"
@@ -220,11 +216,12 @@
 (deftest test-aes-128-cbc-encrypt-decrypt
   (testing "CBC works on 16 byte block"
     (is (= "YELLOW PLAIN TXT"
-           (bytes-to-string
+           (bytes->string
             (aes-128-cbc-decipher "YELLOW SUBMARINE"
-                                  (aes-128-cbc-encipher "YELLOW SUBMARINE"
-                                                        (map byte "YELLOW PLAIN TXT")
-                                                        (range 16))
+                                  (aes-128-cbc-encipher
+                                   (string->bytesvec "YELLOW SUBMARINE")
+                                   (string->bytesvec "YELLOW PLAIN TXT")
+                                   (range 16))
                                   (range 16)))))))
 
 
@@ -232,19 +229,30 @@
   (testing "cbc on 16 bytes with iv=0 is ecb - remove padding"
     (is (= "This is the test to code"
            (zero-unpadded
-            (aes-128-cbc-decipher
-             "YELLOW SUBMARINE"
-             (aes-128-cbc-encipher "YELLOW SUBMARINE"
-                                   (map byte "This is the test to code")
-                                   (range 16))
-             (range 16)))))))
+            (bytes->string
+             (aes-128-cbc-decipher
+              "YELLOW SUBMARINE"
+              (aes-128-cbc-encipher "YELLOW SUBMARINE"
+                                    (map byte "This is the test to code")
+                                    (range 16))
+              (range 16))))))))
 
 
 (deftest test-block-cipher-decrypt
   (testing "Test Set 2 Challenge 10"
     (is (=
-         (aes-128-cbc-decipher
-          "YELLOW SUBMARINE"
-          (decoded-base64-file "test/clojure_crypto_challenge/10.txt")
-          (repeat 16 0))
+         (zero-unpadded
+          (bytes->string
+           (aes-128-cbc-decipher
+            "YELLOW SUBMARINE"
+            (decoded-base64-file "test/clojure_crypto_challenge/10.txt")
+            (repeat 16 0))))
          (slurp "test/clojure_crypto_challenge/10answer.txt")))))
+
+;;; Set 2 Challenge 11
+
+(deftest test-ecb?
+  (testing "a repeated set of blocks is picked up as ecb"
+    (is (ecb?
+         (string->bytesvec
+          "       yellow submarine       yellow submarine  yellow submarineyellow submarine")))))
