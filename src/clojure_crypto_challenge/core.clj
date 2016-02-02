@@ -1,11 +1,12 @@
 (ns clojure-crypto-challenge.core
   (:require [clojure.java.io :as io]
             [clojure.math.numeric-tower :as math]
-            [clojure.string :as string])
-  (:import  java.util.Base64
-            java.nio.charset.StandardCharsets
-            javax.crypto.Cipher
-            javax.crypto.spec.SecretKeySpec))
+            [clojure.string :as string]
+            [criterium.core :as crit])
+  (:import java.nio.charset.StandardCharsets
+           java.util.Base64
+           javax.crypto.Cipher
+           javax.crypto.spec.SecretKeySpec))
 
 (defn string->bytesvec
   "robust way to convert string to vector of bytes"
@@ -451,7 +452,7 @@
 (defn decoded-base64-file
   "carriage returns seem to break decode base64"
   [file]
-  (decode-base64 (string/replace (slurp file) "\n" "")))
+  (decode-base64 (string/replace (slurp file) #"\r?\n" "")))
 
 ;;; Set 2 Challenge 11
 
@@ -513,3 +514,89 @@
   (> (:score ((score-repetitions ratio-distinct 16) coll)) 1))
 
 ;;; Set 2 Challenge 12
+
+
+(def random-16-byte-key (rand-byte-sequence 16))
+
+(def challenge-12-unknown-text
+  (decoded-base64-file "test/clojure_crypto_challenge/12.txt"))
+
+(defn aes-128-ecb-oracle-hard-coded
+  "Encrypt known text with hidden key. This is to allow practice of insertion attack."
+  [coll]
+  (vec (aes-128-ecb-encrypt
+        random-16-byte-key
+        (flatten (zero-padded-16-byte-blocks (into  coll challenge-12-unknown-text))))))
+
+(defn- base-padded-vector
+  [n coll]
+  (let [i (inc (count coll))]
+    (into (vec (repeat (- n i) 0)) coll)))
+
+(defn- generate-message-sequence
+  "we have known bytes in coll, this starts as nil
+  we always generate total size as 1 less than n bytes
+  we pad the rest so we can control the input to a cipher"
+  ([n] (generate-message-sequence n nil))
+  ([n coll]
+   (map conj
+        (repeat (base-padded-vector n coll))
+        (range 256))))
+
+(defn function-nil-size
+  "assume that f is a message oracle"
+  [f]
+  (count (f nil)))
+
+(defn limited-oracle-output
+  ""
+  [f]
+  (fn [x]
+    (take (function-nil-size f) (f x))))
+
+(defn attempt-map
+  "keyed map of attempts against message sequences"
+  [f coll]
+  (let [i (function-nil-size f)                           ;hardcode 144 as message length
+        x (generate-message-sequence i coll)]
+    (zipmap
+     (map f x)
+     x)))
+
+
+(defn get-byte-from-message
+  "doc-string"
+  [f i]
+  (vec ((limited-oracle-output f) (vec (repeat i 0)))))
+
+
+(defn find-byte
+  "Finding byte by manipulating last byte in a sequence.
+  i is size of sequence. coll is the sequence of known bytes."
+  [f coll]
+  (let [x (inc (count coll))
+        y (- (function-nil-size f) x)]                     ;hardcoded message size 144
+    (vec (take-last x
+                    (get
+                     (attempt-map (limited-oracle-output f) coll)
+                     (get-byte-from-message f y))))))
+
+(defn ecb-decrypt-oracle
+  "decrypt a block of"
+  [f]
+  (loop [coll nil
+         i (function-nil-size f)]
+    (if (zero? i)
+      coll
+      (recur (find-byte f coll) (dec i)))))
+
+
+(crit/quick-bench (bytes->string (ecb-decrypt-oracle aes-128-ecb-oracle-hard-coded)))
+
+
+(defn write-to-file [s coll]
+  (with-open [w (clojure.java.io/writer s)]
+    (doseq [x coll]
+      (.write w (str x "\r\n")))))
+
+;; (write-to-file "dave.txt" first-byte-sequences)

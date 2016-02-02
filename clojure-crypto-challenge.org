@@ -761,4 +761,23 @@ clojure-crypto-challenge.core> (quick-bench (math/expt 112 2))
      Actually, don't need the 16 partitions. There is nothing special about
      the text, all that matters is I look for repetitions!
 ** Byte-at-a-time ECB decription (Simple) (Set 2 Challenge 12)
+*** <2016-02-01 Mon 23:14>
+    This is a bit harder to figure out what's happening. I think the
+    goal is that by encrypting all possible last bytes, it wll be
+    possible to figure out what was used before encryption.
+*** <2016-02-02 Tue 22:07>
+    This wasn't so hard in the end. I had misunderstood the problems. The
+    goal was to reverse engeineer an oracle that pretends to be an
+    encrypter.
+    Have completed the challenge. Solution seems slow. Can speed it up
+    by allowing early termination on byte searches (i.e. don't encrypt
+    bytes, once a solution is found).
+
+    WARNING: Final GC required 10.91622019646087 % of runtime
+    Evaluation count : 6 in 6 samples of 1 calls.
+    Execution time mean : 23.929769 sec
+    Execution time std-deviation : 304.589506 ms
+    Execution time lower quantile : 23.691796 sec ( 2.5%)
+    Execution time upper quantile : 24.406075 sec (97.5%)
+    Overhead used : 2.533894 ns
 
